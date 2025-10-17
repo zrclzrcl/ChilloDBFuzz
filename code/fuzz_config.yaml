@@ -1,0 +1,7 @@
+TARGET_DBMS: "SQLite"
+INPUT_DIR: "../docker/sqlite/BGSeed/"
+OUTPUT_DIR: "/home/fuzz_out"
+FUZZER_PATH: "../AFLplusplus/afl-fuzz"
+CHILO_MUTATOR_PATH: "./ChiloMutate.py"
+#CHILO_CONDA_PYTHON_PATH: "/home/conda/envs/chilo/bin/python"
+FUZZ_TIME: 600

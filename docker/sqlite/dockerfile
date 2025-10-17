@@ -1,12 +1,15 @@
 from ubuntu:22.04
-LABEL maintainer="zrcl"
+LABEL maintainer="ZRCL"
 
 ENV DEBIAN_FRONTEND noninteractive
 
 # common config
-RUN apt-get update && apt-get -y install make cmake build-essential vim sudo git tcl8.6 tcl8.6-tdbc-sqlite3\
-    clang ninja-build pkg-config clang-format \
-    libpq-dev libyaml-cpp-dev lld llvm wget bzip2 ca-certificates && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get -y install \
+    make cmake build-essential sudo git \
+    tcl8.6 tcl8.6-tdbc-sqlite3 \
+    clang-16 llvm-16 lld ninja-build pkg-config \
+    libpq-dev libyaml-cpp-dev wget bzip2 ca-certificates python3-dev\
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
     bash /tmp/miniconda.sh -b -p /opt/conda && \
@@ -16,35 +19,37 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 ENV PATH=/opt/conda/bin:$PATH
 
 RUN mkdir -p /home && \
-    groupadd dobigthing && \
-    useradd -l -K UMASK=0000 -d /home -g dobigthing dobigthing && \
-    chown dobigthing:dobigthing /home
+    groupadd chilo && \
+    useradd -l -K UMASK=0000 -d /home -g chilo chilo && \
+    chown chilo:chilo /home
 
-RUN	echo "dobigthing:dobigthing" | chpasswd && usermod -a -G sudo dobigthing
+RUN	echo "chilo:chilo" | chpasswd && usermod -a -G sudo chilo
 RUN chmod +w /etc/sudoers && \
-    echo "%dobigthing   ALL=(ALL:ALL)NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "%chilo   ALL=(ALL:ALL)NOPASSWD:ALL" >> /etc/sudoers && \
     chmod -w /etc/sudoers
 
-USER dobigthing
+USER chilo
 WORKDIR /home
 
-RUN git clone 
+RUN git clone https://github.com/zrclzrcl/ChilloDBFuzz.git && \
+    cd ChilloDBFuzz && git submodule update --init && \
+    cd AFLplusplus && LLVM_CONFIG=llvm-config-16 make -j$(nproc)
 
-RUN git clone https://github.com/s3team/Squirrel.git && \
-    cd Squirrel && git submodule update --init && \
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSQLITE=ON && \
-    cmake --build build -j && \
-    cd AFLplusplus/ && git remote add upstream https://github.com/AFLplusplus/AFLplusplus.git && git fetch upstream --tags && \
-    git reset --hard v4.31c && LLVM_CONFIG=llvm-config-14 make -j20
 
+# 搞定python环境
+RUN cd ./ChilloDBFuzz/code/ && conda env create -f ./environment.yaml && conda clean -afy
+ENV CONDA_DEFAULT_ENV=ChilloDBFuzz
+ENV PATH=/opt/conda/envs/ChilloDBFuzz/bin:$PATH
+SHELL ["bash", "-c"]
+RUN echo "conda activate myenv" >> ~/.bashrc
+
+# 构建sqlite
 ARG CFLAGS="-DSQLITE_MAX_LENGTH=128000000 -DSQLITE_MAX_SQL_LENGTH=128000000 -DSQLITE_MAX_MEMORY=25000000 -DSQLITE_PRINTF_PRECISION_LIMIT=1048576 -DSQLITE_DEBUG=1 -DSQLITE_MAX_PAGE_COUNT=16384"
-
 RUN git clone https://github.com/sqlite/sqlite sqlite3/ && cd sqlite3 && git checkout version-3.30.0 && mkdir bld
-
 WORKDIR /home/sqlite3/bld
-
-ENV CC=/home/Squirrel/AFLplusplus/afl-cc
-ENV CXX=/home/Squirrel/AFLplusplus/afl-c++
+ENV CC=/home/ChilloDBFuzz/AFLplusplus/afl-cc
+ENV CXX=/home/ChilloDBFuzz/AFLplusplus/afl-c++
+ENV AFL_USE_ASAN=1
 RUN ../configure && make -j && make sqlite3.c
 
 RUN $CC $CFLAGS -I. -c \
@@ -56,7 +61,4 @@ RUN $CXX $CXXFLAGS \
     /home/sqlite3/test/ossfuzz.o /home/sqlite3/test/ossshell.o -o /home/ossfuzz \
    ./sqlite3.o -ldl -pthread
 
-ADD ./docker/set_seed/  /home/Squirrel/data/fuzz_root/set_seed/
-
-WORKDIR /home/Squirrel/scripts/utils
-#ENTRYPOINT python3 run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
+WORKDIR /home/ChilloDBFuzz/code
