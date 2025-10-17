@@ -1,0 +1,82 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    hire_date DATE DEFAULT (date('now')),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    location VARCHAR(100)
+);
+
+CREATE TABLE projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    start_date DATE,
+    end_date DATE
+);
+
+CREATE TABLE employee_projects (
+    employee_id INTEGER,
+    project_id INTEGER,
+    PRIMARY KEY (employee_id, project_id),
+    FOREIGN KEY (employee_id) REFERENCES employees(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('John', 'Doe', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('Jane', 'Smith', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('Peter', 'Jones', 90000.00, 3);
+
+INSERT INTO projects (name, start_date, end_date) VALUES ('Project Alpha', '2023-01-01', '2023-12-31');
+INSERT INTO projects (name, start_date, end_date) VALUES ('Project Beta', '2023-03-15', '2024-06-30');
+
+INSERT INTO employee_projects (employee_id, project_id) VALUES (1, 1);
+INSERT INTO employee_projects (employee_id, project_id) VALUES (2, 2);
+INSERT INTO employee_projects (employee_id, project_id) VALUES (3, 1);
+INSERT INTO employee_projects (employee_id, project_id) VALUES (3, 2);
+
+SELECT e.first_name, e.last_name, d.name AS department_name, p.name AS project_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id
+LEFT JOIN employee_projects ep ON e.id = ep.employee_id
+LEFT JOIN projects p ON ep.project_id = p.id;
+
+SELECT SUM(salary) OVER (PARTITION BY department_id) AS total_department_salary, first_name, last_name FROM employees;
+
+SELECT group_concat(first_name, ', ') FROM employees;
+
+PRAGMA table_info(employees);
+
+CREATE VIEW high_earners AS SELECT first_name, last_name FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+CREATE TRIGGER update_salary
+AFTER UPDATE OF salary ON employees
+BEGIN
+  INSERT INTO employee_salary_changes (employee_id, old_salary, new_salary, change_date)
+  VALUES (OLD.id, OLD.salary, NEW.salary, date('now'));
+END;
+
+CREATE TABLE employee_salary_changes (
+  employee_id INTEGER,
+  old_salary DECIMAL(10, 2),
+  new_salary DECIMAL(10, 2),
+  change_date DATE
+);
+
+UPDATE employees SET salary = 80000 WHERE id = 2;
+
+SELECT * FROM employee_salary_changes;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);

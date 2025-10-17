@@ -1,0 +1,36 @@
+CREATE TABLE products (
+  product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_name TEXT NOT NULL,
+  price REAL NOT NULL CHECK (price > 0),
+  description TEXT
+);
+
+CREATE TABLE categories (
+  category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+  product_id INTEGER,
+  category_id INTEGER,
+  FOREIGN KEY (product_id) REFERENCES products(product_id),
+  FOREIGN KEY (category_id) REFERENCES categories(category_id),
+  UNIQUE (product_id, category_id)
+);
+
+INSERT INTO categories (category_name) VALUES ('Electronics'), ('Books');
+
+INSERT INTO products (product_name, price, description) VALUES
+('Laptop', 1200.00, 'High-performance laptop'),
+('Database Fuzzing 101', 50.00, 'A comprehensive guide to database fuzzing');
+
+INSERT INTO product_categories (product_id, category_id) VALUES (1, 1), (2,2);
+
+CREATE VIEW discounted_products AS
+SELECT product_name, price * 0.9 AS discounted_price
+FROM products
+WHERE price > 100;
+
+PRAGMA case_sensitive_like = TRUE;
+
+SELECT product_name FROM products WHERE product_name LIKE '%laptop%';

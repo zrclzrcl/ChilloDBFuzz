@@ -1,0 +1,84 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name TEXT NOT NULL,
+    price REAL,
+    description TEXT,
+    category TEXT
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone TEXT,
+    address TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    price_per_unit REAL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO products (product_name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Mouse', 25.00, 'Wireless optical mouse', 'Electronics'),
+('T-shirt', 20.00, 'Cotton T-shirt', 'Clothing');
+
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-1234', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '555-5678', '456 Oak Ave');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 20.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 1, 20.00);
+
+-- Example of a common table expression (CTE)
+WITH DiscountedOrders AS (
+    SELECT order_id, total_amount * 0.9 AS discounted_amount
+    FROM orders
+    WHERE total_amount > 100
+)
+SELECT * FROM DiscountedOrders;
+
+-- Example using GLOB and LIKE
+SELECT product_name FROM products WHERE product_name GLOB 'L*top';
+SELECT email FROM customers WHERE email LIKE '%@example.com';
+
+-- Example using RANDOM() and LIMIT
+SELECT product_name FROM products ORDER BY RANDOM() LIMIT 1;
+
+-- Example using datetime functions
+SELECT order_date, strftime('%Y-%m-%d', order_date) AS formatted_date FROM orders;
+
+-- Example using coalesce to handle null values
+SELECT product_name, COALESCE(description, 'No description available') FROM products;
+
+-- Attempt to create a view, might trigger errors if view already exists.
+CREATE VIEW IF NOT EXISTS CustomerOrderSummary AS
+SELECT c.first_name, c.last_name, o.order_id, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+SELECT * FROM CustomerOrderSummary LIMIT 10;
+
+-- Example using pragma statement, specific to sqlite
+PRAGMA table_info(products);

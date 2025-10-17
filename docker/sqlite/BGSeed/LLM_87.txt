@@ -1,0 +1,77 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    age INTEGER,
+    department TEXT
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    location TEXT
+);
+
+INSERT INTO employees (name, age, department) VALUES
+('Alice', 30, 'Sales'),
+('Bob', 25, 'Marketing'),
+('Charlie', 35, 'Sales'),
+('David', 40, 'Engineering');
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+CREATE VIEW EmployeeSummary AS
+SELECT
+    e.name AS employee_name,
+    e.age,
+    d.name AS department_name,
+    d.location AS department_location
+FROM
+    employees e
+JOIN
+    departments d ON e.department = d.name;
+
+SELECT employee_name, age, department_name FROM EmployeeSummary WHERE age > 28;
+
+SELECT department, AVG(age) FROM employees GROUP BY department HAVING COUNT(*) > 1;
+
+SELECT location, COUNT(*) FROM departments GROUP BY location;
+
+-- Trigger example (SQLite specific)
+CREATE TRIGGER update_employee_age
+AFTER UPDATE OF age ON employees
+BEGIN
+    UPDATE employees SET department = 'R&D' WHERE id = NEW.id AND NEW.age > 50;
+END;
+
+UPDATE employees SET age = 55 WHERE name = 'David';
+
+-- Recursive CTE Example (SQLite specific)
+WITH RECURSIVE
+  cnt(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x+1 FROM cnt
+    WHERE x<5
+  )
+SELECT x FROM cnt;
+
+-- FTS5 Example (SQLite specific)
+CREATE VIRTUAL TABLE email USING fts5(sender, title, body);
+INSERT INTO email(sender, title, body) VALUES('john.doe@example.com', 'Important Update', 'This is a test email using FTS5.');
+SELECT * FROM email WHERE email MATCH 'test';
+
+-- Window Function and Common Table Expression
+WITH RankedEmployees AS (
+  SELECT
+    name,
+    age,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY age DESC) AS age_rank
+  FROM employees
+)
+SELECT name, age, department
+FROM RankedEmployees
+WHERE age_rank = 1;

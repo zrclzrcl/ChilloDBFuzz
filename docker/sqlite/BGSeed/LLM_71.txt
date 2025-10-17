@@ -1,0 +1,74 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    published BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_posts_user_id ON posts (user_id);
+CREATE INDEX idx_comments_post_id ON comments (post_id);
+
+INSERT INTO users (username, email, password) VALUES ('john_doe', 'john.doe@example.com', 'password123');
+INSERT INTO users (username, email, password) VALUES ('jane_doe', 'jane.doe@example.com', 'secure_password');
+
+INSERT INTO posts (user_id, title, content, published) VALUES (1, 'My First Post', 'This is the content of my first post.', 1);
+INSERT INTO posts (user_id, title, content, published) VALUES (2, 'Jane\'s Awesome Article', 'Check out my amazing article!', 1);
+INSERT INTO posts (user_id, title, content, published) VALUES (1, 'Another Post', 'More interesting content.', 0);
+
+INSERT INTO comments (post_id, user_id, comment) VALUES (1, 2, 'Great post!');
+INSERT INTO comments (post_id, user_id, comment) VALUES (1, 1, 'Thanks!');
+INSERT INTO comments (post_id, user_id, comment) VALUES (2, 1, 'I enjoyed reading this.');
+
+UPDATE posts SET content = 'Updated content' WHERE id = 1;
+
+DELETE FROM comments WHERE post_id = 2;
+
+SELECT * FROM users WHERE username LIKE '%doe%';
+SELECT * FROM posts WHERE published = 1 ORDER BY created_at DESC;
+SELECT comments.comment, users.username FROM comments JOIN users ON comments.user_id = users.id WHERE comments.post_id = 1;
+SELECT COUNT(*) FROM posts WHERE user_id = 1;
+SELECT AVG(LENGTH(content)) FROM posts;
+
+-- SQLite-specific: Attempt to insert a duplicate username with IGNORE
+INSERT OR IGNORE INTO users (username, email, password) VALUES ('john_doe', 'new.email@example.com', 'new_password');
+
+-- SQLite-specific: Test on conflict replace for email (requires UNIQUE constraint)
+INSERT OR REPLACE INTO users (id, username, email, password) VALUES (1, 'john_doe_updated', 'john.doe@example.com', 'new_password');
+
+-- Test WITHOUT ROWID table
+CREATE TABLE NoRowId (
+    name TEXT,
+    value INTEGER,
+    PRIMARY KEY (name)
+) WITHOUT ROWID;
+INSERT INTO NoRowId (name, value) VALUES ('test', 123);
+SELECT * FROM NoRowId;
+
+-- Test VIEW
+CREATE VIEW ActivePosts AS SELECT id, title FROM posts WHERE published = 1;
+SELECT * FROM ActivePosts;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='users';
+PRAGMA table_info(users);

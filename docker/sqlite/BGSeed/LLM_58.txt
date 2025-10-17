@@ -1,0 +1,85 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category TEXT
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price REAL NOT NULL, -- Price at the time of order
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO products (product_name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Mouse', 25.00, 'Wireless mouse', 'Electronics'),
+('Keyboard', 75.00, 'Mechanical keyboard', 'Electronics'),
+('T-Shirt', 20.00, 'Cotton T-Shirt', 'Apparel'),
+('Jeans', 60.00, 'Blue Jeans', 'Apparel');
+
+INSERT INTO customers (first_name, last_name, email, phone) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 80.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 4, 1, 20.00),
+(2, 5, 1, 60.00);
+
+
+SELECT product_name, price FROM products WHERE price BETWEEN 50 AND 100;
+
+SELECT c.first_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_date >= date('now', '-1 month');
+
+SELECT category, AVG(price) AS average_price
+FROM products
+GROUP BY category
+HAVING AVG(price) > 50;
+
+SELECT product_name FROM products WHERE description LIKE '%laptop%';
+
+SELECT last_insert_rowid();
+
+SELECT * FROM products WHERE product_id = (SELECT MAX(product_id) FROM products);
+
+SELECT typeof(price) FROM products;
+
+SELECT DISTINCT category FROM products ORDER BY category COLLATE NOCASE;
+
+SELECT COUNT(*) FROM customers;
+
+SELECT * FROM pragma_table_info('products');
+
+SELECT 'Test' GLOB '*es*';
+
+SELECT CASE WHEN EXISTS (SELECT 1 FROM products WHERE price > 1000) THEN 'Expensive products exist' ELSE 'No expensive products' END;

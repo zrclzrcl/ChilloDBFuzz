@@ -1,0 +1,44 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL
+);
+
+CREATE TABLE dept_emp (
+    employee_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    PRIMARY KEY (employee_id, department_id)
+);
+
+INSERT INTO departments (department_name) VALUES ('Sales');
+INSERT INTO departments (department_name) VALUES ('Marketing');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES ('John', 'Doe', '2022-01-15', 60000.0);
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES ('Jane', 'Smith', '2023-03-10', 75000.0);
+
+INSERT INTO dept_emp (employee_id, department_id) VALUES (1, 1);
+INSERT INTO dept_emp (employee_id, department_id) VALUES (2, 2);
+
+SELECT e.first_name, d.department_name FROM employees e JOIN dept_emp de ON e.employee_id = de.employee_id JOIN departments d ON de.department_id = d.department_id WHERE e.salary > 70000;
+
+SELECT total(salary) FROM employees;
+
+SELECT last_insert_rowid();
+
+PRAGMA table_info(employees);
+
+CREATE VIEW high_earners AS SELECT first_name, last_name FROM employees WHERE salary > 70000;
+SELECT * FROM high_earners;
+
+SELECT typeof(employee_id) FROM employees;
+
+SELECT CASE WHEN salary > 70000 THEN 'High' ELSE 'Low' END AS salary_level FROM employees;

@@ -1,0 +1,36 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category TEXT
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Mouse', 25.00, 'Wireless mouse', 'Electronics'),
+('Book', 15.00, 'A thrilling novel', 'Books');
+
+CREATE INDEX idx_products_category ON products (category);
+
+SELECT name, price FROM products WHERE category = 'Electronics' ORDER BY price DESC LIMIT 1;
+
+-- Simulate an error condition with a trigger
+CREATE TABLE order_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER,
+  quantity INTEGER,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER check_stock
+BEFORE INSERT ON order_log
+BEGIN
+  SELECT CASE
+    WHEN (SELECT COUNT(*) FROM products WHERE id = NEW.product_id) = 0 THEN
+      RAISE(FAIL, 'Product does not exist')
+  END;
+END;
+
+INSERT INTO order_log (product_id, quantity) VALUES (1,1);
+INSERT INTO order_log (product_id, quantity) VALUES (999,1); -- This will trigger an error

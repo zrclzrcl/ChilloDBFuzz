@@ -1,0 +1,35 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category TEXT DEFAULT 'uncategorized'
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.50, 'High-performance laptop', 'Electronics'),
+('Mouse', 25.00, 'Wireless mouse', 'Electronics'),
+('Keyboard', 75.00, 'Mechanical keyboard', 'Electronics');
+
+CREATE INDEX idx_products_name ON products (name);
+
+CREATE VIEW discounted_products AS
+SELECT id, name, price * 0.9 AS discounted_price
+FROM products
+WHERE price > 100;
+
+CREATE TRIGGER update_category
+AFTER INSERT ON products
+BEGIN
+    UPDATE products SET category = 'featured' WHERE id = NEW.id AND price > 1000;
+END;
+
+INSERT INTO products (name, price) VALUES ('Tablet', 300);
+
+SELECT last_insert_rowid();
+
+-- Try a virtual table using FTS5 for full-text search
+CREATE VIRTUAL TABLE product_search USING fts5(name, description, content='products', content_rowid='id');
+INSERT INTO product_search (rowid, name, description) SELECT id, name, description FROM products;
+
+SELECT * FROM product_search WHERE product_search MATCH 'laptop';

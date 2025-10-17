@@ -1,0 +1,73 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    department_id INTEGER,
+    email VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id, email) VALUES ('John', 'Doe', '2020-01-15', 60000.00, 1, 'john.doe@example.com');
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id, email) VALUES ('Jane', 'Smith', '2021-03-20', 75000.00, 2, 'jane.smith@example.com');
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id, email) VALUES ('Peter', 'Jones', '2022-05-10', 90000.00, 3, 'peter.jones@example.com');
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id, email) VALUES ('Alice', 'Brown', '2023-07-01', 65000.00, 1, 'alice.brown@example.com');
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id, email) VALUES ('Bob', 'Williams', '2024-01-01', 80000.00, 2, 'bob.williams@example.com');
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.name AS department_name,
+    d.location AS department_location
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id;
+
+SELECT * FROM employee_details WHERE salary > 70000;
+
+SELECT department_name, AVG(salary) AS average_salary FROM employee_details GROUP BY department_name ORDER BY average_salary DESC;
+
+SELECT first_name, last_name FROM employees WHERE hire_date BETWEEN '2021-01-01' AND '2023-12-31';
+
+SELECT first_name, last_name, salary FROM employees ORDER BY salary DESC LIMIT 3;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT MAX(salary), MIN(salary), AVG(salary) FROM employees;
+
+SELECT department_id, SUM(salary) FROM employees GROUP BY department_id HAVING SUM(salary) > 100000;
+
+PRAGMA table_info(employees);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+CREATE INDEX idx_employee_salary ON employees (salary);
+
+SELECT first_name, last_name FROM employees WHERE first_name LIKE 'J%';
+
+SELECT first_name || ' ' || last_name AS full_name FROM employees;
+
+SELECT date('now');
+
+SELECT CAST(salary AS INT) FROM employees;
+
+SELECT first_name, last_name, salary FROM employees WHERE salary IS NOT NULL;
+
+SELECT first_name, last_name FROM employees UNION SELECT name, location FROM departments;
+
+SELECT first_name, last_name FROM employees INTERSECT SELECT name, location FROM departments WHERE 1=0; -- Empty result set, still valid
+
+SELECT first_name, last_name FROM employees EXCEPT SELECT name, location FROM departments WHERE 1=0; -- All employees

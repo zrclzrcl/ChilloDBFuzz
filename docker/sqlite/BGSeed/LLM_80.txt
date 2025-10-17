@@ -1,0 +1,38 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Jane', 'Smith', '2021-06-20', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Peter', 'Jones', '2023-03-10', 55000.00, 3);
+
+SELECT first_name, last_name FROM employees WHERE salary > 65000;
+
+SELECT d.name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employees e ON d.id = e.department_id
+GROUP BY d.name;
+
+SELECT AVG(salary) FROM employees;
+
+CREATE INDEX idx_employees_last_name ON employees (last_name);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+PRAGMA table_info(employees);

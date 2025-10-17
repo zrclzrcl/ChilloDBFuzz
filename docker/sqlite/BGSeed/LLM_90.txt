@@ -1,0 +1,91 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category TEXT
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price REAL NOT NULL CHECK (price > 0),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Smartphone', 800.00, 'Latest smartphone model', 'Electronics'),
+('T-shirt', 25.00, 'Cotton T-shirt', 'Clothing'),
+('Coffee Maker', 50.00, 'Automatic coffee maker', 'Appliances');
+
+INSERT INTO customers (first_name, last_name, email, phone) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '123-456-7890'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '987-654-3210');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 850.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 3, 1, 25.00),
+(2, 2, 1, 800.00),
+(2, 4, 1, 50.00);
+
+-- Test aggregate functions and joins
+SELECT c.first_name, SUM(oi.quantity * oi.price) AS total_spent
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+JOIN order_items oi ON o.order_id = oi.order_id
+GROUP BY c.first_name
+ORDER BY total_spent DESC;
+
+-- Test subqueries
+SELECT name, price FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+-- Test LIKE operator
+SELECT * FROM products WHERE name LIKE '%phone%';
+
+-- Test NULL values and COALESCE
+SELECT first_name, COALESCE(phone, 'No phone number') FROM customers;
+
+-- Test date functions
+SELECT order_date, strftime('%Y-%m', order_date) AS order_month FROM orders;
+
+-- Test UNIQUE constraint violation (intentional) - This will error, testing error handling.
+INSERT INTO customers (first_name, last_name, email, phone) VALUES ('Eve', 'Williams', 'alice.smith@example.com', '555-123-4567');
+
+-- Test ALTER TABLE - Adding a column.
+ALTER TABLE products ADD COLUMN supplier_id INTEGER;
+
+-- Test UPDATE
+UPDATE products SET supplier_id = 1 WHERE category = 'Electronics';
+
+-- Test DELETE
+DELETE FROM products WHERE id = 4;
+
+-- Test VACUUM (SQLite specific) - Important for performance after lots of changes.
+VACUUM;
+
+-- Test PRAGMA statement (SQLite specific) - Check integrity.
+PRAGMA integrity_check;

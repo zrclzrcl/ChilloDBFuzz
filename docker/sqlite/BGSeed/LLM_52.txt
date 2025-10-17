@@ -1,0 +1,86 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY,
+    address TEXT,
+    postal_code TEXT,
+    city TEXT,
+    state_province TEXT,
+    country_id TEXT
+);
+
+CREATE TABLE countries (
+    country_id TEXT PRIMARY KEY,
+    country_name TEXT,
+    region_id INTEGER
+);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'Software Engineer', 60000, 120000),
+(2, 'Data Scientist', 70000, 130000),
+(3, 'Project Manager', 80000, 150000);
+
+INSERT INTO departments (department_id, department_name) VALUES
+(10, 'IT'),
+(20, 'Marketing'),
+(30, 'Finance');
+
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+(100, 'John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 75000, 10),
+(101, 'Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 2, 85000, 20),
+(102, 'Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 3, 95000, 30);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    d.department_name,
+    j.job_title,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    jobs j ON e.job_id = j.job_id;
+
+CREATE TRIGGER update_salary
+AFTER UPDATE ON employees
+BEGIN
+    UPDATE employees SET salary = NEW.salary WHERE employee_id = NEW.employee_id;
+END;
+
+PRAGMA integrity_check;
+
+SELECT sql FROM sqlite_master WHERE type='table';
+SELECT * FROM employee_details LIMIT 2;
+SELECT RAISE(FAIL, 'Intentional failure for testing');
+SELECT last_insert_rowid();
+SELECT changes();

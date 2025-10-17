@@ -1,0 +1,67 @@
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  price REAL NOT NULL CHECK (price > 0),
+  description TEXT,
+  category_id INTEGER,
+  FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE categories (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY,
+  customer_id INTEGER NOT NULL,
+  order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+  order_id INTEGER NOT NULL,
+  product_id INTEGER NOT NULL,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  FOREIGN KEY (order_id) REFERENCES orders(id),
+  FOREIGN KEY (product_id) REFERENCES products(id),
+  PRIMARY KEY (order_id, product_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Home Goods');
+
+INSERT INTO products (name, price, description, category_id) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 1),
+('T-shirt', 25.00, 'Cotton T-shirt', 2),
+('Coffee Maker', 80.00, 'Automatic coffee maker', 3);
+
+CREATE VIEW product_details AS
+SELECT
+  p.id,
+  p.name AS product_name,
+  p.price,
+  c.name AS category_name
+FROM products p
+JOIN categories c ON p.category_id = c.id;
+
+CREATE TRIGGER update_order_date
+AFTER INSERT ON order_items
+BEGIN
+  UPDATE orders SET order_date = CURRENT_TIMESTAMP WHERE id = NEW.order_id;
+END;
+
+CREATE INDEX idx_products_category_id ON products (category_id);
+
+-- Test case: Attempt to insert a product with a negative price
+INSERT INTO products (name, price, description, category_id) VALUES ('Invalid Product', -10.00, 'This should fail', 1);
+
+-- Test case: Demonstrate the view
+SELECT * FROM product_details;
+
+-- Test case: Insert data into order and order_items, triggering the trigger
+INSERT INTO orders (customer_id) VALUES (123);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (last_insert_rowid(), 1, 2);
+
+SELECT * from orders;
+
+PRAGMA table_info(products);
+PRAGMA index_list(products);

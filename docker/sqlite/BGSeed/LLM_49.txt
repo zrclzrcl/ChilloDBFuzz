@@ -1,0 +1,64 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INTEGER
+);
+
+INSERT INTO departments (department_name, location_id) VALUES
+('Sales', 101),
+('Marketing', 102),
+('IT', 103),
+('Human Resources', 104);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-03-01', 2, 75000.00, 2),
+('Robert', 'Jones', 'robert.jones@example.com', '2022-05-10', 3, 90000.00, 3);
+
+-- Test case-insensitive LIKE
+SELECT * FROM employees WHERE first_name LIKE '%john%';
+SELECT * FROM employees WHERE first_name LIKE '%JoHn%' COLLATE NOCASE;
+
+-- Test GLOB operator (similar to LIKE but uses filesystem-like wildcards)
+SELECT * FROM employees WHERE last_name GLOB 'J*';
+
+-- Test datetime functions
+SELECT DATE('now');
+SELECT DATETIME('now', '+1 day');
+
+-- Test REPLACE function
+SELECT REPLACE('Hello World', 'World', 'SQLite');
+
+-- Test RANDOM() function for unpredictable behavior
+SELECT RANDOM();
+
+-- Test aggregate functions with GROUP BY and HAVING
+SELECT department_id, AVG(salary) FROM employees GROUP BY department_id HAVING AVG(salary) > 70000;
+
+-- Test CASE WHEN expression
+SELECT first_name,
+       CASE
+           WHEN salary > 80000 THEN 'High Salary'
+           WHEN salary > 60000 THEN 'Medium Salary'
+           ELSE 'Low Salary'
+       END AS salary_level
+FROM employees;
+
+-- Test subquery in WHERE clause
+SELECT * FROM employees WHERE department_id IN (SELECT department_id FROM departments WHERE department_name LIKE '%IT%');
+
+-- Test pragma statement (SQLite specific) - check database integrity
+PRAGMA integrity_check;

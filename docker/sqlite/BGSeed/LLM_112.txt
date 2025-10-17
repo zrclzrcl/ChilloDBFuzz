@@ -1,0 +1,69 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL,
+    description TEXT
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE product_categories (
+    product_id INTEGER,
+    category_id INTEGER,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    UNIQUE (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, price, description) VALUES
+('Laptop', 1200.00, 'High-performance laptop'),
+('The Lord of the Rings', 15.50, 'Classic fantasy novel'),
+('T-shirt', 20.00, 'Comfortable cotton t-shirt');
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+CREATE VIEW product_details AS
+SELECT
+    p.name AS product_name,
+    p.price,
+    c.name AS category_name
+FROM
+    products p
+JOIN
+    product_categories pc ON p.id = pc.product_id
+JOIN
+    categories c ON pc.category_id = c.id;
+
+CREATE TRIGGER product_price_update
+AFTER UPDATE ON products
+BEGIN
+    SELECT RAISE(ABORT, 'Price cannot be negative')
+    WHERE NEW.price < 0;
+END;
+
+PRAGMA table_info(products);
+PRAGMA index_list(product_categories);
+
+-- Test virtual table mechanism (fts5)
+CREATE VIRTUAL TABLE product_search USING fts5(name, description);
+INSERT INTO product_search(rowid, name, description) SELECT id, name, description FROM products;
+
+-- Test WITHOUT ROWID table
+CREATE TABLE no_rowid_table (
+  a INTEGER,
+  b TEXT,
+  PRIMARY KEY (a, b)
+) WITHOUT ROWID;
+
+INSERT INTO no_rowid_table VALUES (1, 'test1'), (2, 'test2');
+
+-- Test GLOB operator
+SELECT * FROM products WHERE name GLOB '*book*';

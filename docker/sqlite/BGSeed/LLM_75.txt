@@ -1,0 +1,29 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL
+);
+
+CREATE UNIQUE INDEX idx_employees_name ON employees (name);
+
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'Sales', 50000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Bob', 'Engineering', 75000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Charlie', 'Sales', 55000.00);
+INSERT INTO employees (name, department, salary) VALUES ('David', 'Marketing', 60000.00);
+
+-- Test some SQLite specific features (e.g., WITHOUT ROWID)
+CREATE TABLE audit_log (
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    message TEXT
+) WITHOUT ROWID;
+
+INSERT INTO audit_log (message) VALUES ('Employee Alice added.');
+
+-- Try an upsert operation (SQLite >= 3.24.0)
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'Engineering', 80000.00)
+ON CONFLICT(name) DO UPDATE SET department = excluded.department, salary = excluded.salary;
+
+SELECT * FROM employees WHERE salary > 60000;
+
+DELETE FROM employees WHERE department = 'Sales';

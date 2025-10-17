@@ -1,0 +1,51 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE,
+    job_id TEXT,
+    salary REAL,
+    commission_pct REAL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+INSERT INTO departments (department_name) VALUES ('Sales');
+INSERT INTO departments (department_name) VALUES ('Marketing');
+INSERT INTO departments (department_name) VALUES ('Engineering');
+
+INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES ('John', 'Doe', 'john.doe@example.com', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES ('Peter', 'Jones', 'peter.jones@example.com', 90000.00, 3);
+
+SELECT department_name, COUNT(employee_id) AS employee_count FROM departments LEFT JOIN employees ON departments.department_id = employees.department_id GROUP BY department_name;
+
+SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT first_name, last_name FROM employees ORDER BY last_name COLLATE NOCASE;
+
+-- Example of a SQLite-specific pragma statement
+PRAGMA integrity_check;
+
+-- Example using WITHOUT ROWID table
+DROP TABLE IF EXISTS contacts;
+CREATE TABLE contacts (
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  PRIMARY KEY (name, phone)
+) WITHOUT ROWID;
+
+INSERT INTO contacts (name, phone) VALUES ('Alice', '123-456-7890');
+INSERT INTO contacts (name, phone) VALUES ('Bob', '987-654-3210');
+
+SELECT * FROM contacts;

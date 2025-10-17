@@ -1,0 +1,73 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL UNIQUE,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY,
+    address TEXT,
+    postal_code TEXT,
+    city TEXT,
+    state_province TEXT,
+    country_id TEXT
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+-- Add foreign key constraints (some might require existing data adjustments)
+ALTER TABLE employees ADD CONSTRAINT fk_employees_departments FOREIGN KEY (department_id) REFERENCES departments(department_id);
+ALTER TABLE employees ADD CONSTRAINT fk_employees_jobs FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+ALTER TABLE departments ADD CONSTRAINT fk_departments_locations FOREIGN KEY (location_id) REFERENCES locations(location_id);
+ALTER TABLE employees ADD CONSTRAINT fk_employees_manager FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
+ALTER TABLE departments ADD CONSTRAINT fk_departments_manager FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
+
+-- Sample data insertions (Illustrative, adjust values to avoid constraint violations)
+INSERT INTO locations (location_id, address, city, country_id) VALUES (1, '123 Main St', 'Anytown', 'US');
+INSERT INTO departments (department_id, department_name, location_id) VALUES (10, 'Sales', 1);
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES (100, 'Sales Representative', 40000, 70000);
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES (1, 'John', 'Doe', 'john.doe@example.com', '2023-01-01', 100, 50000, 10);
+
+-- Trigger Example
+CREATE TRIGGER check_salary BEFORE INSERT ON employees
+BEGIN
+  SELECT CASE
+    WHEN NEW.salary < (SELECT min_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+      RAISE (ABORT,'Salary too low')
+    WHEN NEW.salary > (SELECT max_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+      RAISE (ABORT,'Salary too high')
+  END;
+END;
+
+-- Virtual Table Example (Requires FTS extension enabled)
+CREATE VIRTUAL TABLE mail USING fts5(sender, title, body);
+
+INSERT INTO mail(sender, title, body) VALUES('sender1@example.com', 'Important Info', 'This is the message body.');
+
+-- PRAGMA statements - Specific to SQLite
+PRAGMA cache_size = 10000;
+PRAGMA foreign_keys = ON;  --Enforce foreign key constraints. crucial for more fuzzing scenarios
+PRAGMA journal_mode = WAL; -- WAL is often beneficial for concurrency and performance
+
+-- Vacuum
+VACUUM; -- Reduce database file size after schema changes/data insertions.

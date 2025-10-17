@@ -1,0 +1,24 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    quantity INTEGER DEFAULT 0
+);
+
+CREATE VIEW discounted_products AS
+SELECT product_name, price * 0.9 AS discounted_price
+FROM products
+WHERE quantity > 10;
+
+CREATE TRIGGER update_quantity
+AFTER INSERT ON products
+BEGIN
+    UPDATE products SET quantity = quantity + 1 WHERE product_id = NEW.product_id;
+END;
+
+INSERT INTO products (product_name, price, quantity) VALUES ('Example Product', 25.50, 15);
+INSERT INTO products (product_name, price) VALUES ('Another Product', 100.00);
+
+SELECT * FROM discounted_products;
+
+PRAGMA table_info(products);

@@ -1,0 +1,65 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    category_id INTEGER,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+CREATE TABLE categories (
+    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_name TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO categories (category_name) VALUES ('Electronics'), ('Clothing'), ('Home Goods');
+
+INSERT INTO products (product_name, description, price, category_id) VALUES
+('Smartphone', 'Latest model with 5G', 999.99, 1),
+('T-Shirt', 'Cotton, various colors', 19.99, 2),
+('Coffee Maker', 'Drip coffee maker', 39.99, 3);
+
+CREATE VIEW product_summary AS
+SELECT
+    p.product_name,
+    p.price,
+    c.category_name
+FROM
+    products p
+JOIN
+    categories c ON p.category_id = c.category_id;
+
+CREATE INDEX idx_product_name ON products (product_name);
+
+CREATE TRIGGER update_product_price
+AFTER UPDATE ON products
+WHEN NEW.price < OLD.price
+BEGIN
+    INSERT INTO products (product_name, description, price, category_id) VALUES ('Discount Notification', 'Price Drop Alert', 0.00, 1);
+END;
+
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO orders (customer_id) VALUES (123);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2);
+
+SELECT * FROM product_summary;
+UPDATE products SET price = 900 WHERE product_id = 1;
+SELECT * FROM products WHERE product_name = 'Discount Notification';
+
+-- VACUUM; -- Potential performance/integrity testing

@@ -1,0 +1,45 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER,
+    salary REAL
+);
+
+INSERT INTO employees (name, age, salary) VALUES
+('Alice', 30, 50000.00),
+('Bob', 25, 40000.00),
+('Charlie', 35, 60000.00);
+
+CREATE VIEW high_earners AS
+SELECT name, salary
+FROM employees
+WHERE salary > 45000.00;
+
+SELECT * FROM high_earners;
+
+CREATE TRIGGER salary_update
+AFTER UPDATE OF salary ON employees
+BEGIN
+    INSERT INTO audit_log (employee_id, old_salary, new_salary, timestamp)
+    VALUES (OLD.id, OLD.salary, NEW.salary, strftime('%Y-%m-%d %H:%M:%S', 'now'));
+END;
+
+CREATE TABLE audit_log (
+    id INTEGER PRIMARY KEY,
+    employee_id INTEGER,
+    old_salary REAL,
+    new_salary REAL,
+    timestamp TEXT
+);
+
+UPDATE employees SET salary = 55000.00 WHERE name = 'Alice';
+
+SELECT * FROM audit_log;
+
+SELECT sql FROM sqlite_master WHERE type='table' OR type='view' OR type='trigger';
+
+PRAGMA table_info(employees);
+
+SELECT ABS(-10);
+
+SELECT last_insert_rowid();

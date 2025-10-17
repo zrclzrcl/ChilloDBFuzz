@@ -1,0 +1,63 @@
+PRAGMA foreign_keys=ON;
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    quantity INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    modified_at DATETIME
+);
+
+-- Insert some sample data
+INSERT INTO products (name, description, price, quantity) VALUES
+('Apple', 'A delicious red fruit', 1.0, 100),
+('Banana', 'A yellow tropical fruit', 0.5, 150),
+('Orange', 'A citrus fruit', 0.75, 120);
+
+-- Create a table for categories
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
+-- Insert some categories
+INSERT INTO categories (name) VALUES
+('Fruit'),
+('Electronics'),
+('Clothing');
+
+-- Create a table for product-category relationships (many-to-many)
+CREATE TABLE product_categories (
+    product_id INTEGER,
+    category_id INTEGER,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+-- Associate products with categories
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),  -- Apple is a Fruit
+(2, 1),  -- Banana is a Fruit
+(3, 1);  -- Orange is a Fruit
+
+-- Update the price of a product
+UPDATE products SET price = 1.25 WHERE name = 'Apple';
+
+-- Select products and their categories
+SELECT p.name, c.name FROM products p
+JOIN product_categories pc ON p.id = pc.product_id
+JOIN categories c ON pc.category_id = c.id;
+
+-- Delete a product
+DELETE FROM products WHERE name = 'Banana';
+
+-- Try an upsert (SQLite specific)
+INSERT INTO products (name, price) VALUES ('Apple', 1.5)
+ON CONFLICT(name) DO UPDATE SET price = excluded.price;
+
+-- VACUUM to optimize the database
+VACUUM;

@@ -1,0 +1,29 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER,
+    salary REAL
+);
+
+INSERT INTO employees (name, age, salary) VALUES ('Alice', 30, 50000.00);
+INSERT INTO employees (name, age, salary) VALUES ('Bob', 25, 60000.00);
+INSERT INTO employees (name, age, salary) VALUES ('Charlie', 35, 75000.00);
+INSERT INTO employees (name, age, salary) VALUES ('David', 40, 80000.00);
+
+CREATE INDEX idx_age ON employees (age);
+
+SELECT name, salary FROM employees WHERE age > 30 ORDER BY salary DESC;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT SUM(salary) FROM employees WHERE age < 40;
+
+SELECT * FROM employees WHERE name LIKE 'A%';
+
+SELECT DISTINCT age FROM employees;
+
+-- VACUUM: SQLite-specific command for database maintenance.
+VACUUM;
+
+-- PRAGMA integrity_check: SQLite-specific command to check database integrity
+PRAGMA integrity_check;

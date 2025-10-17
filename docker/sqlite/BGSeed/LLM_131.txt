@@ -1,0 +1,80 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY,
+    city TEXT,
+    state TEXT
+);
+
+INSERT INTO locations (city, state) VALUES ('New York', 'NY'), ('Los Angeles', 'CA'), ('Chicago', 'IL');
+
+INSERT INTO departments (department_name, location_id) VALUES ('Sales', 1), ('Marketing', 2), ('IT', 3);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2020-01-15', 60000.00, 1),
+('Jane', 'Smith', '2021-03-10', 75000.00, 2),
+('Peter', 'Jones', '2022-05-20', 90000.00, 3),
+('Alice', 'Brown', '2023-07-01', 55000.00, 1),
+('Bob', 'Williams', '2023-09-15', 80000.00, 2);
+
+-- Window function with filtering and aggregation
+SELECT
+    department_name,
+    AVG(salary) OVER (PARTITION BY department_name) AS avg_salary,
+    SUM(CASE WHEN salary > 70000 THEN 1 ELSE 0 END) OVER (PARTITION BY department_name) AS high_earners
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id;
+
+-- Recursive CTE to generate a sequence of numbers
+WITH RECURSIVE counter(n) AS (
+    SELECT 1
+    UNION ALL
+    SELECT n+1 FROM counter WHERE n<5
+)
+SELECT n FROM counter;
+
+-- FTS5 Table for full-text search (SQLite specific)
+CREATE VIRTUAL TABLE email USING fts5(sender, title, body);
+
+INSERT INTO email(sender, title, body) VALUES
+('john.doe@example.com', 'Meeting Request', 'Please confirm your availability for the meeting next week.'),
+('jane.smith@example.com', 'Project Update', 'Here is the latest status report on the project.'),
+('peter.jones@example.com', 'Important Announcement', 'All employees are required to attend the training session.');
+
+SELECT * FROM email WHERE email MATCH 'meeting OR project';
+
+-- Trigger example
+CREATE TABLE audit_log (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT,
+    row_id INTEGER,
+    operation TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER employee_update_trigger
+AFTER UPDATE ON employees
+BEGIN
+    INSERT INTO audit_log (table_name, row_id, operation)
+    VALUES ('employees', old.employee_id, 'UPDATE');
+END;
+
+UPDATE employees SET salary = 85000 WHERE employee_id = 3;
+
+SELECT * FROM audit_log;

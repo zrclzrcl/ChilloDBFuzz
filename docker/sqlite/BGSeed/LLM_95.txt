@@ -1,0 +1,71 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL
+);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES
+('Alice', 'Smith', '2022-01-15', 60000.00),
+('Bob', 'Johnson', '2021-05-20', 75000.00),
+('Charlie', 'Brown', '2023-03-10', 55000.00);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    location TEXT
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Engineering', 'San Francisco'),
+('Marketing', 'Chicago');
+
+CREATE TABLE employee_departments (
+    employee_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (employee_id) REFERENCES employees(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id),
+    PRIMARY KEY (employee_id, department_id)
+);
+
+INSERT INTO employee_departments (employee_id, department_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.name AS department_name,
+    d.location AS department_location
+FROM
+    employees e
+JOIN
+    employee_departments ed ON e.id = ed.employee_id
+JOIN
+    departments d ON ed.department_id = d.id;
+
+SELECT * FROM employee_details;
+
+CREATE TRIGGER salary_check
+BEFORE INSERT ON employees
+BEGIN
+  SELECT CASE
+    WHEN NEW.salary < 0 THEN
+      RAISE (ABORT,'Salary cannot be negative')
+  END;
+END;
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES ('Bad','Employee', '2024-01-01', -100); -- This should trigger the salary_check trigger.
+
+CREATE TABLE json_test (
+  id INTEGER PRIMARY KEY,
+  data JSON
+);
+
+INSERT INTO json_test (data) VALUES ('{"name": "Test", "value": 123}');
+SELECT json_extract(data, '$.name') FROM json_test;

@@ -1,0 +1,64 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL
+);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES
+('John', 'Doe', '2022-01-15', 60000.00),
+('Jane', 'Smith', '2023-03-20', 75000.50),
+('Peter', 'Jones', '2022-08-01', 55000.00);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT first_name, last_name FROM employees WHERE salary > 65000 ORDER BY last_name;
+
+CREATE VIEW high_earners AS
+SELECT employee_id, first_name, last_name, salary
+FROM employees
+WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL
+);
+
+INSERT INTO departments (department_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(department_id);
+
+UPDATE employees SET department_id = 1 WHERE last_name = 'Doe';
+UPDATE employees SET department_id = 2 WHERE last_name = 'Smith';
+UPDATE employees SET department_id = 3 WHERE last_name = 'Jones';
+
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id;
+
+SELECT group_concat(first_name, ', ') FROM employees; -- SQLite specific aggregate function
+
+SELECT date('now'); -- SQLite specific date function
+
+PRAGMA table_info(employees); -- SQLite specific pragma command
+
+SELECT CASE
+    WHEN salary > 70000 THEN 'High'
+    WHEN salary > 50000 THEN 'Medium'
+    ELSE 'Low'
+END AS salary_level, first_name, last_name
+FROM employees;
+
+CREATE TABLE json_test (data JSON);
+INSERT INTO json_test VALUES ('{"name": "Alice", "age": 30}');
+SELECT json_extract(data, '$.name') FROM json_test;
+
+CREATE VIRTUAL TABLE fts_employees USING fts5(first_name, last_name, salary);
+INSERT INTO fts_employees SELECT first_name, last_name, salary FROM employees;
+SELECT * FROM fts_employees WHERE fts_employees MATCH 'John';

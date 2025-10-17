@@ -1,0 +1,68 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.com');
+
+CREATE INDEX idx_username ON users (username);
+
+CREATE VIEW active_users AS
+SELECT id, username, email FROM users WHERE created_at > date('now', '-1 year');
+
+CREATE TRIGGER prevent_delete_admin
+BEFORE DELETE ON users
+WHEN OLD.username = 'admin'
+BEGIN
+    SELECT RAISE(ABORT, 'Cannot delete admin user');
+END;
+
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    image BLOB
+);
+
+INSERT INTO products (name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00);
+
+PRAGMA foreign_keys = ON; -- Enable foreign key support
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (user_id, product_id, quantity) VALUES
+(1, 1, 1),
+(2, 2, 2);
+
+CREATE TABLE sales (
+    product_id INTEGER PRIMARY KEY,
+    total_sales REAL DEFAULT 0.0,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO sales (product_id) SELECT id FROM products;
+
+CREATE TRIGGER update_sales_after_order
+AFTER INSERT ON orders
+BEGIN
+  UPDATE sales SET total_sales = total_sales + (NEW.quantity * (SELECT price FROM products WHERE id = NEW.product_id)) WHERE product_id = NEW.product_id;
+END;
+
+SELECT * FROM active_users;
+SELECT SUM(total_sales) FROM sales;
+SELECT name FROM products WHERE price BETWEEN 10 AND 100;

@@ -1,0 +1,25 @@
+DROP TABLE IF EXISTS Employees;
+CREATE TABLE Employees (
+    EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
+    FirstName VARCHAR(50) NOT NULL,
+    LastName VARCHAR(50) NOT NULL,
+    Salary DECIMAL(10, 2) CHECK (Salary > 0),
+    HireDate DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
+);
+
+INSERT INTO Employees (FirstName, LastName, Salary) VALUES ('John', 'Doe', 50000.00);
+INSERT INTO Employees (FirstName, LastName, Salary) VALUES ('Jane', 'Smith', 60000.00);
+INSERT INTO Employees (FirstName, LastName, Salary) VALUES ('Robert', 'Jones', 75000.00);
+
+SELECT * FROM Employees WHERE Salary > 55000.00 ORDER BY LastName;
+
+UPDATE Employees SET Salary = Salary * 1.10 WHERE EmployeeID = 1;
+
+DELETE FROM Employees WHERE EmployeeID = 3;
+
+SELECT COUNT(*) FROM Employees;
+
+SELECT FirstName, LastName, Salary FROM Employees WHERE Salary = (SELECT MAX(Salary) FROM Employees);
+
+-- VACUUM command specific to SQLite for database optimization
+VACUUM;

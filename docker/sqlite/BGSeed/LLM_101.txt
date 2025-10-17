@@ -1,0 +1,94 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name TEXT NOT NULL,
+    price REAL,
+    description TEXT
+);
+
+CREATE TABLE categories (
+    category_id INTEGER PRIMARY KEY,
+    category_name TEXT NOT NULL
+);
+
+CREATE TABLE product_categories (
+    product_id INTEGER,
+    category_id INTEGER,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+INSERT INTO categories (category_name) VALUES
+('Electronics'),
+('Books'),
+('Home Goods');
+
+INSERT INTO products (product_name, price, description) VALUES
+('Laptop', 1200.00, 'High-performance laptop for professionals'),
+('The Lord of the Rings', 15.00, 'Classic fantasy novel'),
+('Coffee Maker', 50.00, 'Automatic coffee maker');
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+CREATE VIEW product_details AS
+SELECT
+    p.product_name,
+    p.price,
+    c.category_name
+FROM
+    products p
+JOIN
+    product_categories pc ON p.product_id = pc.product_id
+JOIN
+    categories c ON pc.category_id = c.category_id;
+
+-- Trigger to update description if price changes drastically
+CREATE TRIGGER update_description
+AFTER UPDATE OF price ON products
+BEGIN
+    UPDATE products
+    SET description = 'Price changed significantly'
+    WHERE product_id = NEW.product_id AND ABS(NEW.price - OLD.price) > (0.2 * OLD.price);
+END;
+
+-- Example queries to test functionality
+SELECT * FROM product_details;
+SELECT product_name, price FROM products WHERE price > 100 ORDER BY price DESC;
+SELECT category_name, COUNT(*) FROM product_categories JOIN categories ON product_categories.category_id = categories.category_id GROUP BY category_name;
+
+UPDATE products SET price = 1500.00 WHERE product_id = 1; -- This should trigger the update_description trigger
+UPDATE products SET price = 1201.00 WHERE product_id = 1; -- This will not trigger
+
+SELECT * FROM products;
+
+-- Test case-insensitive collation
+CREATE TABLE case_insensitive_test (
+  id INTEGER PRIMARY KEY,
+  value TEXT COLLATE NOCASE
+);
+
+INSERT INTO case_insensitive_test (value) VALUES ('apple');
+INSERT INTO case_insensitive_test (value) VALUES ('Apple');
+INSERT INTO case_insensitive_test (value) VALUES ('banana');
+
+SELECT * FROM case_insensitive_test WHERE value = 'apple';
+SELECT * FROM case_insensitive_test WHERE value = 'Apple';
+
+-- Test BLOB data type
+CREATE TABLE blob_test (
+  id INTEGER PRIMARY KEY,
+  data BLOB
+);
+
+INSERT INTO blob_test (data) VALUES (x'48656c6c6f20576f726c64'); -- "Hello World" in hex
+
+SELECT hex(data) FROM blob_test;
+
+-- Test VACUUM
+VACUUM;
+
+-- Test pragma statements
+PRAGMA table_info(products);
+PRAGMA index_list(product_categories);

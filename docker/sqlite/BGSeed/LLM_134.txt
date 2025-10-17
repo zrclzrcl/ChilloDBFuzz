@@ -1,0 +1,33 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    hire_date DATE DEFAULT (DATE('now')),
+    salary REAL CHECK (salary > 0),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    location TEXT
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('John', 'Doe', 60000.00, (SELECT id FROM departments WHERE name = 'Sales'));
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('Jane', 'Smith', 75000.00, (SELECT id FROM departments WHERE name = 'Engineering'));
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('Peter', 'Jones', 55000.00, (SELECT id FROM departments WHERE name = 'Marketing'));
+
+SELECT first_name, last_name, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT name, COUNT(employees.id) AS employee_count FROM departments LEFT JOIN employees ON departments.id = employees.department_id GROUP BY departments.id;
+
+SELECT hex(randomblob(4)); -- SQLite specific function. Generates a random hex string. This tests the built-in function.
+
+PRAGMA integrity_check; -- SQLite specific command to check database integrity.
+
+SELECT DISTINCT typeof(hire_date) FROM employees; -- Check data types, important for type-related bugs.

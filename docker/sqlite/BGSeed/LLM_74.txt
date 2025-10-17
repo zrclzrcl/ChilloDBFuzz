@@ -1,0 +1,77 @@
+BEGIN;
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+    product_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Books');
+
+INSERT INTO products (name, price, description) VALUES
+('Smartphone', 999.99, 'Latest model with 5G'),
+('T-Shirt', 19.99, 'Comfortable cotton t-shirt'),
+('Database Systems Textbook', 79.99, 'Comprehensive guide to database systems');
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+CREATE VIEW product_details AS
+SELECT
+    p.id,
+    p.name,
+    p.price,
+    p.description,
+    c.name AS category
+FROM
+    products p
+INNER JOIN
+    product_categories pc ON p.id = pc.product_id
+INNER JOIN
+    categories c ON pc.category_id = c.id;
+
+-- Attempt to insert a duplicate category (should fail)
+INSERT INTO categories (name) VALUES ('Electronics');
+
+-- Trigger a CHECK constraint failure (should fail)
+INSERT INTO products (name, price) VALUES ('Broken Product', -10);
+
+-- Example using SQLite's window functions
+SELECT
+  name,
+  price,
+  RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM products;
+
+-- Example using SQLite's recursive CTE (Common Table Expression) to generate a sequence of numbers
+WITH RECURSIVE
+  cnt(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x+1 FROM cnt
+    WHERE x<5
+  )
+SELECT x FROM cnt;
+
+
+COMMIT;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='products';
+
+SELECT sum(LENGTH(description)) FROM products;

@@ -1,0 +1,75 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category TEXT
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total REAL
+);
+
+CREATE TABLE order_items (
+    id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Mouse', 25.00, 'Wireless mouse', 'Electronics'),
+('Keyboard', 75.00, 'Mechanical keyboard', 'Electronics'),
+('T-shirt', 20.00, 'Cotton T-shirt', 'Clothing');
+
+INSERT INTO orders (customer_id, total) VALUES
+(1, 1225.00),
+(2, 95.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 1, 75.00),
+(2, 4, 1, 20.00);
+
+-- Demonstrate Window Functions, specific to SQLite's support (or lack thereof requiring workarounds)
+SELECT
+    name,
+    price,
+    category,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Test of a WITHOUT ROWID table
+CREATE TABLE example (
+  a INTEGER,
+  b TEXT,
+  c REAL,
+  PRIMARY KEY (a,b)
+) WITHOUT ROWID;
+
+INSERT INTO example VALUES (1, 'test', 3.14);
+SELECT * FROM example;
+
+-- Trigger example
+CREATE TABLE log (msg TEXT);
+
+CREATE TRIGGER products_insert AFTER INSERT ON products
+BEGIN
+  INSERT INTO log (msg) VALUES ('New product inserted: ' || NEW.name);
+END;
+
+INSERT INTO products (name, price, description, category) VALUES ('Tablet', 300.00, 'Android Tablet', 'Electronics');
+SELECT * FROM log;
+
+-- PRAGMA statement for database configuration (common target for fuzzing)
+PRAGMA cache_size = 10000;
+
+SELECT * FROM products WHERE description LIKE '%laptop%';

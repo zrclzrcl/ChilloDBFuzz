@@ -1,0 +1,64 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES
+('Sales Representative', 40000.00, 75000.00),
+('Accountant', 50000.00, 85000.00),
+('Software Engineer', 60000.00, 120000.00);
+
+INSERT INTO departments (department_name) VALUES ('Sales'), ('Finance'), ('Engineering');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 55000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-11-01', 2, 65000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-20', 3, 80000.00, 3);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+CREATE UNIQUE INDEX idx_email ON employees (email);
+
+SELECT * FROM employees WHERE salary BETWEEN 60000 AND 90000;
+SELECT department_name FROM departments WHERE department_id IN (SELECT department_id FROM employees WHERE salary > 60000);
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 1;
+
+DELETE FROM employees WHERE employee_id = 3;
+
+SELECT AVG(salary) AS average_salary FROM employees;
+
+SELECT COUNT(*) AS total_employees FROM employees;
+
+SELECT first_name, last_name FROM employees ORDER BY last_name ASC LIMIT 2 OFFSET 0;
+
+SELECT group_concat(first_name, ', ') FROM employees;
+
+SELECT quote(first_name) FROM employees; -- Test string quoting function
+
+SELECT typeof(salary) FROM employees; -- Test data type reporting function
+
+-- Simulate an error condition (division by zero)
+SELECT salary / (commission_pct + 0.0) FROM employees WHERE commission_pct IS NOT NULL;

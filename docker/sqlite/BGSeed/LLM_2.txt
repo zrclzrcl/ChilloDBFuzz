@@ -1,0 +1,77 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category_id INTEGER,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    PRIMARY KEY (order_id, product_id)
+);
+
+CREATE VIEW product_summary AS
+SELECT
+    p.id,
+    p.name,
+    p.price,
+    c.name AS category
+FROM
+    products p
+JOIN
+    categories c ON p.category_id = c.id;
+
+CREATE TRIGGER update_order_date
+AFTER INSERT ON order_items
+BEGIN
+    UPDATE orders SET order_date = CURRENT_TIMESTAMP WHERE id = NEW.order_id;
+END;
+
+INSERT INTO categories (name) VALUES ('Electronics');
+INSERT INTO categories (name) VALUES ('Clothing');
+INSERT INTO categories (name) VALUES ('Home Goods');
+
+INSERT INTO products (name, price, category_id, description) VALUES ('Laptop', 1200.00, 1, 'High-performance laptop');
+INSERT INTO products (name, price, category_id, description) VALUES ('T-Shirt', 25.00, 2, 'Comfortable cotton t-shirt');
+INSERT INTO products (name, price, category_id, description) VALUES ('Coffee Maker', 75.00, 3, 'Automatic coffee maker');
+
+INSERT INTO orders (customer_id) VALUES (123);
+INSERT INTO orders (customer_id) VALUES (456);
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 1);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 2, 3);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (2, 3, 1);
+
+-- SQLite specific: Recursive Common Table Expression (CTE)
+WITH RECURSIVE
+  cnt(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x+1 FROM cnt
+    WHERE x<5
+  )
+SELECT x FROM cnt;
+
+-- SQLite specific: JSON functions
+SELECT json('{"a": 1, "b": 2, "c": {"d": 3}}');
+SELECT json_extract('{"a": 1, "b": 2, "c": {"d": 3}}', '$.c.d');
+
+-- SQLite specific: GLOB operator
+SELECT name FROM products WHERE name GLOB '*top*';

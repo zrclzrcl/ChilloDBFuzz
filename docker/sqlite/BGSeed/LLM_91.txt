@@ -1,0 +1,54 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', '2021-05-20', 75000.00, 2),
+('Peter', 'Jones', '2023-03-10', 90000.00, 3);
+
+CREATE VIEW EmployeeSummary AS
+SELECT
+    e.first_name || ' ' || e.last_name AS full_name,
+    d.name AS department,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id;
+
+SELECT full_name, department, salary FROM EmployeeSummary WHERE salary > 70000;
+
+-- SQLite specific feature: WITHOUT ROWID table
+CREATE TABLE audit_log (
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  event_type VARCHAR(20),
+  description TEXT
+) WITHOUT ROWID;
+
+INSERT INTO audit_log (event_type, description) VALUES ('UserLogin', 'User JohnDoe logged in');
+
+-- SQLite specific: using GLOB for pattern matching
+SELECT first_name FROM employees WHERE first_name GLOB 'J*';
+
+-- SQLite specific: IGNORE conflict resolution
+INSERT OR IGNORE INTO departments (id, name, location) VALUES (1, 'Sales', 'Los Angeles');
+
+SELECT last_insert_rowid();

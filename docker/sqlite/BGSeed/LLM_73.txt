@@ -1,0 +1,104 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date TEXT NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'Sales Representative', 40000.00, 75000.00),
+(2, 'Software Engineer', 60000.00, 120000.00),
+(3, 'Accountant', 50000.00, 90000.00);
+
+INSERT INTO departments (department_id, department_name) VALUES
+(10, 'Administration'),
+(20, 'Marketing'),
+(30, 'Purchasing');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 55000.00, 20),
+('Jane', 'Smith', 'jane.smith@example.com', '2023-03-20', 2, 80000.00, 10),
+('Robert', 'Jones', 'robert.jones@example.com', '2022-08-01', 3, 65000.00, 30);
+
+CREATE VIEW EmployeeDetails AS
+SELECT
+    e.first_name,
+    e.last_name,
+    e.email,
+    d.department_name,
+    j.job_title,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    jobs j ON e.job_id = j.job_id;
+
+SELECT * FROM EmployeeDetails;
+
+-- Test case-insensitive collation
+CREATE TABLE case_test (
+  value TEXT COLLATE NOCASE
+);
+
+INSERT INTO case_test (value) VALUES ('a'), ('A'), ('b'), ('B');
+
+SELECT * FROM case_test WHERE value = 'a';
+SELECT * FROM case_test WHERE value = 'A';
+
+-- Test WITHOUT ROWID table
+CREATE TABLE no_rowid_test (
+    col1 INTEGER,
+    col2 TEXT,
+    PRIMARY KEY (col1, col2)
+) WITHOUT ROWID;
+
+INSERT INTO no_rowid_test VALUES (1, 'test');
+INSERT INTO no_rowid_test VALUES (2, 'test2');
+
+SELECT * FROM no_rowid_test;
+
+-- Trigger example:  Automatically update salary when employee is hired
+CREATE TRIGGER employee_hired
+AFTER INSERT ON employees
+BEGIN
+    UPDATE employees SET salary = salary * 1.05 WHERE employee_id = NEW.employee_id;
+END;
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('New', 'Hire', 'new.hire@example.com', '2024-01-01', 1, 50000.00, 20);
+
+SELECT * FROM employees WHERE first_name = 'New';
+
+-- Test JSON1 extension functions (needs to be enabled in your SQLite build/environment)
+SELECT json_object('name', 'value');
+SELECT json_array(1, 2, 3);
+SELECT json_extract('{"a": 1, "b": 2}', '$.a');
+
+-- FTS5 example (Full-text search, needs to be enabled)
+CREATE VIRTUAL TABLE documents USING fts5(content);
+INSERT INTO documents (content) VALUES ('This is the first document.');
+INSERT INTO documents (content) VALUES ('This is the second document.');
+SELECT * FROM documents WHERE documents MATCH 'first';

@@ -1,0 +1,46 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    hire_date DATE DEFAULT (date('now')),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+DROP TABLE IF EXISTS departments;
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+INSERT INTO departments (name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering');
+
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES
+('John', 'Doe', 60000.00, (SELECT id FROM departments WHERE name = 'Sales')),
+('Jane', 'Smith', 75000.00, (SELECT id FROM departments WHERE name = 'Engineering')),
+('Peter', 'Jones', 55000.00, (SELECT id FROM departments WHERE name = 'Marketing'));
+
+-- Trigger to automatically update salary based on department
+CREATE TRIGGER salary_update
+AFTER INSERT ON employees
+BEGIN
+    UPDATE employees SET salary = salary * 1.1 WHERE department_id = NEW.department_id AND NEW.salary < 70000;
+END;
+
+-- Virtual table using FTS5 for full-text search on employee names.
+CREATE VIRTUAL TABLE employee_search USING fts5(first_name, last_name, content='employees', content_rowid='id');
+
+-- Insert data into fts table.  Important for FTS to function.
+INSERT INTO employee_search(rowid, first_name, last_name) SELECT id, first_name, last_name FROM employees;
+
+-- Example query using fts5
+SELECT * FROM employee_search WHERE employee_search MATCH 'John';
+
+
+-- Example pragma statement to check database integrity.
+PRAGMA integrity_check;

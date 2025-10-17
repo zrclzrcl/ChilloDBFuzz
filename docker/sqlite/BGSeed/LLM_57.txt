@@ -1,0 +1,68 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL,
+    description TEXT,
+    category TEXT
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Mouse', 25.00, 'Wireless mouse', 'Electronics'),
+('Keyboard', 75.00, 'Mechanical keyboard', 'Electronics'),
+('T-shirt', 20.00, 'Cotton T-shirt', 'Clothing'),
+('Jeans', 60.00, 'Denim jeans', 'Clothing');
+
+CREATE INDEX idx_products_name ON products (name);
+
+CREATE VIEW product_summary AS
+SELECT category, AVG(price) AS avg_price, COUNT(*) AS product_count
+FROM products
+GROUP BY category;
+
+SELECT * FROM product_summary;
+
+PRAGMA table_info(products);
+
+SELECT DISTINCT category FROM products;
+
+-- Test case-insensitive LIKE
+SELECT * FROM products WHERE name LIKE '%t-SHIRT%';
+
+-- Test GLOB operator
+SELECT * FROM products WHERE name GLOB '*top*';
+
+-- Test BETWEEN operator
+SELECT * FROM products WHERE price BETWEEN 50 AND 100;
+
+-- Test CASE WHEN statement
+SELECT
+    name,
+    CASE
+        WHEN price > 1000 THEN 'Expensive'
+        WHEN price > 50 THEN 'Moderate'
+        ELSE 'Cheap'
+    END AS price_range
+FROM products;
+
+-- Test date functions (using a dummy date)
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER,
+    order_date TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+    quantity INTEGER,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (product_id, quantity) VALUES (1, 2);
+SELECT order_date FROM orders;
+
+-- Test update statement with a subquery
+UPDATE products SET price = price * 1.1 WHERE id IN (SELECT product_id FROM orders);
+
+SELECT * FROM products;
+
+-- Test delete statement with a limit
+DELETE FROM products WHERE category = 'Clothing' LIMIT 1;
+
+SELECT * FROM products;

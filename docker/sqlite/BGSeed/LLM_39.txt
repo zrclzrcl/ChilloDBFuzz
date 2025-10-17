@@ -1,0 +1,38 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    category_id INTEGER,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Home Goods');
+
+INSERT INTO products (name, price, description, category_id) VALUES
+('Smartphone', 799.99, 'Latest model with 5G', 1),
+('T-Shirt', 19.99, '100% Cotton', 2),
+('Coffee Maker', 49.99, 'Automatic drip coffee maker', 3);
+
+CREATE VIEW product_details AS
+SELECT
+    p.id,
+    p.name,
+    p.price,
+    p.description,
+    c.name AS category
+FROM
+    products p
+JOIN
+    categories c ON p.category_id = c.id;
+
+SELECT * FROM product_details WHERE price > (SELECT AVG(price) FROM products);
+
+PRAGMA table_info(products);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='products';

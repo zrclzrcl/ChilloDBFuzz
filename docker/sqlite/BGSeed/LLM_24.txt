@@ -1,0 +1,22 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL CHECK (price > 0),
+    description TEXT
+);
+
+INSERT INTO products (name, price, description) VALUES ('Awesome Widget', 19.99, 'This widget is truly awesome.');
+
+CREATE INDEX idx_products_name ON products (name);
+
+CREATE VIEW product_summary AS
+SELECT name, price FROM products WHERE price > 10;
+
+CREATE TRIGGER product_price_update
+AFTER UPDATE ON products
+WHEN NEW.price < OLD.price
+BEGIN
+    UPDATE products SET description = 'Price Reduced!' WHERE id = NEW.id;
+END;
+
+PRAGMA journal_mode=WAL;

@@ -1,0 +1,63 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date TEXT NOT NULL,
+    job_id INTEGER NOT NULL,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+  );
+
+  CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    location_id INTEGER
+  );
+
+  INSERT INTO departments (department_id, department_name) VALUES (10, 'Administration');
+  INSERT INTO departments (department_id, department_name) VALUES (20, 'Marketing');
+  INSERT INTO departments (department_id, department_name) VALUES (50, 'Shipping');
+
+  INSERT INTO employees (first_name, last_name, job_id, hire_date, salary, department_id) VALUES ('Steven', 'King', 1, '2003-06-17', 24000, 10);
+  INSERT INTO employees (first_name, last_name, job_id, hire_date, salary, department_id) VALUES ('Neena', 'Kochhar', 2, '2005-09-21', 17000, 20);
+  INSERT INTO employees (first_name, last_name, job_id, hire_date, salary, department_id) VALUES ('Lex', 'De Haan', 3, '2001-01-13', 17000, 50);
+
+  CREATE VIEW employee_details AS
+  SELECT
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    d.department_name
+  FROM
+    employees e
+  INNER JOIN
+    departments d ON e.department_id = d.department_id;
+
+  SELECT first_name, last_name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+  SELECT department_id, department_name FROM departments WHERE department_id IN (SELECT department_id FROM employees GROUP BY department_id HAVING AVG(salary) > 10000);
+
+  SELECT group_concat(first_name, ', ') AS employee_list FROM employees WHERE department_id = 50;
+
+  CREATE TABLE sales (
+    sale_id INTEGER PRIMARY KEY,
+    product_id INTEGER,
+    sale_date TEXT,
+    amount REAL
+  );
+
+  INSERT INTO sales (product_id, sale_date, amount) VALUES (1, '2023-01-01', 100.00);
+  INSERT INTO sales (product_id, sale_date, amount) VALUES (1, '2023-01-02', 150.00);
+  INSERT INTO sales (product_id, sale_date, amount) VALUES (2, '2023-01-03', 200.00);
+
+  SELECT product_id, date(sale_date), sum(amount) OVER (PARTITION BY product_id ORDER BY sale_date) AS rolling_sum FROM sales;
+
+  SELECT employee_id, first_name, last_name, ntile(4) OVER (ORDER BY salary DESC) AS salary_quartile FROM employees;
+
+  PRAGMA table_info(employees);
+
+  SELECT typeof(salary) FROM employees LIMIT 1;

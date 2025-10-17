@@ -1,0 +1,60 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name TEXT NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT,
+    city TEXT,
+    state TEXT,
+    zip_code TEXT
+);
+
+INSERT INTO departments (department_name, location_id) VALUES
+('Sales', 1),
+('Marketing', 2),
+('Engineering', 3);
+
+INSERT INTO locations (address, city, state, zip_code) VALUES
+('123 Main St', 'Anytown', 'CA', '91234'),
+('456 Oak Ave', 'Springfield', 'IL', '62704'),
+('789 Pine Ln', 'Hill Valley', 'CA', '95555');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', '2021-05-20', 75000.00, 2),
+('Peter', 'Jones', '2023-03-10', 90000.00, 3);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.department_name,
+    l.city
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    locations l ON d.location_id = l.location_id;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Élodie', 'Smith', '2021-05-20', 75000.00, 2);
+SELECT LENGTH(first_name) from employees where first_name='Élodie';
+SELECT quote(first_name) from employees where first_name='Élodie';
+SELECT typeof(salary) FROM employees;
+
+PRAGMA integrity_check;

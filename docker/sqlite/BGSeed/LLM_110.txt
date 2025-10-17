@@ -1,0 +1,77 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    age INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    published BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO users (username, email, age) VALUES
+    ('john_doe', 'john.doe@example.com', 30),
+    ('jane_smith', 'jane.smith@example.com', 25),
+    ('peter_jones', 'peter.jones@example.com', 40);
+
+INSERT INTO posts (user_id, title, content, published) VALUES
+    (1, 'First Post', 'This is my first post.', TRUE),
+    (1, 'Another Post', 'Content for another post by John.', FALSE),
+    (2, 'Jane''s Thoughts', 'Sharing my thoughts...', TRUE),
+    (3, 'Peter''s Article', 'An interesting article by Peter.', TRUE);
+
+-- Demonstrate some SQLite-specific functions/features
+SELECT last_insert_rowid();
+
+SELECT strftime('%Y-%m-%d %H:%M:%S', created_at) FROM users;
+
+SELECT id, username FROM users WHERE username GLOB '*[jJ]*';
+
+SELECT id, username FROM users WHERE username LIKE '%[jJ]%';
+
+-- Test JSON functionality (requires SQLite version 3.9 or later)
+CREATE TABLE jsontest (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO jsontest (data) VALUES
+('{"name": "Alice", "age": 28, "city": "New York"}'),
+('{"name": "Bob", "age": 35, "city": "Los Angeles"}');
+
+SELECT json_extract(data, '$.name'), json_extract(data, '$.age') FROM jsontest;
+
+-- Test some expressions with collation
+SELECT username FROM users ORDER BY username COLLATE NOCASE;
+
+-- Test FTS5 full-text search
+CREATE VIRTUAL TABLE articles USING fts5(title, content);
+INSERT INTO articles (title, content) VALUES
+('SQLite FTS5', 'Full-Text Search in SQLite'),
+('Database Fuzzing', 'Finding bugs with database fuzzers');
+SELECT * FROM articles WHERE articles MATCH 'SQLite';
+
+-- Test window functions
+SELECT
+    username,
+    age,
+    RANK() OVER (ORDER BY age DESC) as age_rank
+FROM users;
+
+-- Test common table expression (CTE)
+WITH UserAges AS (
+  SELECT username, age
+  FROM users
+  WHERE age > 28
+)
+SELECT username, age FROM UserAges ORDER BY age;
+
+-- Delete some data and reinsert with different values
+DELETE FROM users WHERE username = 'john_doe';
+INSERT INTO users (username, email, age) VALUES ('john_doe_updated', 'john.doe.updated@example.com', 31);

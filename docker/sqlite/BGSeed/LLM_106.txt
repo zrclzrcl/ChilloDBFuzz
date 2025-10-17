@@ -1,0 +1,53 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    age INTEGER,
+    department TEXT,
+    salary REAL
+);
+
+INSERT INTO employees (name, age, department, salary) VALUES
+('Alice', 30, 'Sales', 60000.00),
+('Bob', 25, 'Marketing', 55000.00),
+('Charlie', 35, 'Engineering', 70000.00),
+('David', 28, 'Sales', 62000.00),
+('Eve', 32, 'Marketing', 58000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+SELECT name FROM employees WHERE age > (SELECT AVG(age) FROM employees);
+
+SELECT * FROM employees WHERE salary BETWEEN 55000 AND 65000;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+SELECT COUNT(*) FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE id = (SELECT MIN(id) FROM employees WHERE department = 'Marketing');
+
+SELECT typeof(id), typeof(name), typeof(age), typeof(department), typeof(salary) FROM employees LIMIT 1;
+
+-- Using window functions (SQLite 3.25+)
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Virtual Table Example using FTS5 for full-text search (ensure FTS5 extension is loaded)
+CREATE VIRTUAL TABLE employee_fts USING fts5(name, department);
+
+INSERT INTO employee_fts SELECT name, department FROM employees;
+
+SELECT * FROM employee_fts WHERE employee_fts MATCH 'Alice OR Sales';
+
+-- Example of a common table expression
+WITH DepartmentAverages AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT e.name, e.department, e.salary, da.avg_salary
+FROM employees e
+JOIN DepartmentAverages da ON e.department = da.department
+WHERE e.salary > da.avg_salary;

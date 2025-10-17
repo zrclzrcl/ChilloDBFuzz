@@ -1,0 +1,73 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+-- Add some constraints and indexes
+ALTER TABLE employees ADD CONSTRAINT fk_department_id FOREIGN KEY (department_id) REFERENCES departments (department_id);
+ALTER TABLE employees ADD CONSTRAINT fk_job_id FOREIGN KEY (job_id) REFERENCES jobs (job_id);
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+-- Insert some data
+INSERT INTO departments (department_id, department_name) VALUES (10, 'Administration');
+INSERT INTO departments (department_id, department_name) VALUES (20, 'Marketing');
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES (1, 'Software Engineer', 60000, 120000);
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES (2, 'Marketing Manager', 70000, 130000);
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES (100, 'Steven', 'King', 'steven.king@example.com', '2003-06-17', 2, 100000.00, 10);
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES (101, 'Neena', 'Kochhar', 'neena.kochhar@example.com', '2005-09-21', 1, 80000.00, 20);
+
+-- Test some aggregate functions and subqueries
+SELECT department_id, AVG(salary) AS avg_salary FROM employees GROUP BY department_id;
+SELECT first_name, last_name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Test some date functions
+SELECT employee_id, hire_date, DATE('now') FROM employees;
+
+-- Test some string functions
+SELECT first_name, UPPER(last_name) FROM employees;
+
+-- Create a view
+CREATE VIEW employee_details AS SELECT e.first_name, e.last_name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.department_id;
+
+-- Select from the view
+SELECT * FROM employee_details;
+
+-- Attach another database (if it exists) for cross-database queries. This will likely fail if the database file doesn't exist, but that's ok, it's part of fuzzing.
+ATTACH DATABASE 'another.db' AS another_db;
+
+-- Attempt a cross-database query (may fail)
+SELECT * FROM employees LIMIT 1 UNION ALL SELECT * FROM another_db.employees LIMIT 1;
+
+-- Create a trigger that modifies data
+CREATE TRIGGER salary_update BEFORE UPDATE OF salary ON employees
+BEGIN
+  SELECT CASE
+    WHEN NEW.salary < 0 THEN
+      RAISE(FAIL, 'Salary cannot be negative')
+  END;
+END;
+
+-- Attempt to violate the trigger (this will test error handling).
+UPDATE employees SET salary = -1 WHERE employee_id = 100;

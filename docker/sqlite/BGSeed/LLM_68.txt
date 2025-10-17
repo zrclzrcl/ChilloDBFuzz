@@ -1,0 +1,104 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    category TEXT DEFAULT 'Uncategorized',
+    inventory INTEGER DEFAULT 0 CHECK (inventory >= 0),
+    created_at DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone TEXT,
+    address TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+    total_amount REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Create a VIEW
+CREATE VIEW customer_order_summary AS
+SELECT
+    c.first_name,
+    c.last_name,
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.total_amount) AS total_spent
+FROM
+    customers c
+LEFT JOIN
+    orders o ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id, c.first_name, c.last_name;
+
+-- Create a TRIGGER
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+BEGIN
+    UPDATE orders
+    SET total_amount = (SELECT SUM(price * quantity) FROM order_items WHERE order_id = NEW.order_id)
+    WHERE order_id = NEW.order_id;
+END;
+
+-- Insert some data
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave');
+
+INSERT INTO products (product_name, description, price, category, inventory) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 'Electronics', 10),
+('Mouse', 'Wireless mouse', 25.00, 'Electronics', 50),
+('T-shirt', 'Cotton T-shirt', 15.00, 'Clothing', 100);
+
+INSERT INTO orders (customer_id) VALUES (1);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00);
+
+-- Example queries
+SELECT * FROM products WHERE price > 100;
+SELECT first_name, last_name FROM customers WHERE email LIKE '%example.com';
+SELECT category, COUNT(*) FROM products GROUP BY category;
+SELECT * FROM customer_order_summary;
+
+-- FTS5 Example
+CREATE VIRTUAL TABLE product_search USING fts5(product_name, description);
+INSERT INTO product_search (product_name, description) SELECT product_name, description FROM products;
+SELECT * FROM product_search WHERE product_name MATCH 'Laptop';
+
+-- Another FTS5 Example
+CREATE VIRTUAL TABLE email_search USING fts5(sender, title, body, tokenize = 'porter unicode61');
+INSERT INTO email_search(sender, title, body) VALUES('test@test.com', 'Test Email', 'this is a test email to see if fts5 works.');
+SELECT * FROM email_search WHERE email_search MATCH 'test';
+
+--JSON1 Example
+
+CREATE TABLE json_example (
+  id INTEGER PRIMARY KEY,
+  data JSON
+);
+
+INSERT INTO json_example (data) VALUES
+('{"name": "John Doe", "age": 30, "city": "New York"}'),
+('{"name": "Jane Smith", "age": 25, "city": "Los Angeles"}');
+
+SELECT json_extract(data, '$.name') FROM json_example WHERE json_extract(data, '$.age') > 28;

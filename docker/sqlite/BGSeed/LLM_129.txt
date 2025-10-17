@@ -1,0 +1,5 @@
+CREATE TABLE fuzz_test (id INTEGER PRIMARY KEY, val TEXT);
+INSERT INTO fuzz_test (val) VALUES ('test1'), ('test2'), ('test3');
+SELECT id, val, LEAD(val, 1, 'N/A') OVER (ORDER BY id) FROM fuzz_test;
+SELECT json_group_array(id) FROM fuzz_test WHERE id IN (SELECT id FROM fuzz_test WHERE val LIKE '%test%');
+PRAGMA table_info(fuzz_test);

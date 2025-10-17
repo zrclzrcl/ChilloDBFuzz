@@ -1,0 +1,51 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.department_name,
+    d.location
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id;
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, (SELECT department_id FROM departments WHERE department_name = 'Sales')),
+('Jane', 'Smith', '2022-03-10', 75000.00, (SELECT department_id FROM departments WHERE department_name = 'Marketing')),
+('Peter', 'Jones', '2022-05-20', 90000.00, (SELECT department_id FROM departments WHERE department_name = 'Engineering'));
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT * FROM employee_details WHERE salary > 70000.00;
+
+SELECT last_name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+SELECT department_name, COUNT(*) AS employee_count FROM departments d JOIN employees e ON d.department_id = e.department_id GROUP BY department_name;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+SELECT quote('string with ''single quotes''');
+
+PRAGMA integrity_check;

@@ -1,0 +1,61 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
+);
+
+CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at DATETIME DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    created_at DATETIME DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE VIEW latest_posts AS
+SELECT posts.id, posts.title, users.username, posts.created_at
+FROM posts
+INNER JOIN users ON posts.user_id = users.id
+ORDER BY posts.created_at DESC
+LIMIT 10;
+
+INSERT INTO users (username, email, password) VALUES
+('testuser1', 'test1@example.com', 'password123'),
+('testuser2', 'test2@example.com', 'secure_password');
+
+INSERT INTO posts (user_id, title, content) VALUES
+(1, 'My First Post', 'This is the content of my first post.'),
+(2, 'Another Post', 'Some more content here.');
+
+INSERT INTO comments (post_id, user_id, comment) VALUES
+(1, 2, 'Great post!'),
+(2, 1, 'Interesting thoughts.');
+
+CREATE TRIGGER update_username_lowercase
+BEFORE INSERT ON users
+BEGIN
+  SELECT CASE
+    WHEN NEW.username GLOB '*[[:upper:]]*'
+    THEN RAISE(FAIL, 'Username must be lowercase')
+  END;
+END;
+
+SELECT * FROM latest_posts;
+
+PRAGMA foreign_keys = ON;
+PRAGMA table_info(users);
+PRAGMA index_list(users);
+SELECT sql FROM sqlite_master WHERE type='table' AND name='users';

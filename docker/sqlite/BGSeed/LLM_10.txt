@@ -1,0 +1,63 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    address TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE VIEW ProductSales AS
+SELECT
+    p.name AS product_name,
+    SUM(oi.quantity * p.price) AS total_sales
+FROM
+    products p
+JOIN
+    order_items oi ON p.id = oi.product_id
+GROUP BY
+    p.name
+ORDER BY
+    total_sales DESC;
+
+CREATE INDEX idx_customer_email ON customers(email);
+
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+BEGIN
+    UPDATE orders
+    SET total = (SELECT SUM(oi.quantity * p.price) FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = NEW.order_id)
+    WHERE order_id = NEW.order_id;
+END;
+
+INSERT INTO customers (name, email, address) VALUES ('John Doe', 'john.doe@example.com', '123 Main St');
+INSERT INTO products (name, price, description) VALUES ('Widget', 19.99, 'A useful widget');
+INSERT INTO orders (customer_id) VALUES (1);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2);
+
+SELECT * FROM ProductSales;
+SELECT sql FROM sqlite_master WHERE type='trigger' AND name = 'update_order_total';
+PRAGMA index_info(idx_customer_email);
+SELECT RAISE(FAIL, 'Intentional Error for testing RAISE function') WHERE 1=1 LIMIT 1;

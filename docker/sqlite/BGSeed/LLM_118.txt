@@ -1,0 +1,86 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date TEXT NOT NULL,
+    job_id INTEGER NOT NULL,
+    salary REAL NOT NULL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+CREATE TABLE job_history (
+    employee_id INTEGER NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    job_id INTEGER NOT NULL,
+    department_id INTEGER NOT NULL,
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
+    FOREIGN KEY (job_id) REFERENCES jobs(job_id),
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    PRIMARY KEY (employee_id, start_date)
+);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'Software Engineer', 60000, 120000),
+(2, 'Data Analyst', 50000, 100000),
+(3, 'Project Manager', 70000, 150000);
+
+INSERT INTO departments (department_id, department_name, location_id) VALUES
+(10, 'IT', 1700),
+(20, 'Marketing', 1800),
+(30, 'Sales', 1900);
+
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+(100, 'Steven', 'King', 'steven.king@example.com', '2003-06-17', 3, 24000.00, 10),
+(101, 'Neena', 'Kochhar', 'neena.kochhar@example.com', '2005-09-21', 2, 17000.00, 20),
+(102, 'Lex', 'De Haan', 'lex.dehaan@example.com', '2001-01-13', 1, 17000.00, 30);
+
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES
+(101, '2001-09-21', '2005-10-27', 2, 20),
+(102, '2006-01-13', '2007-12-31', 1, 30);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.department_name,
+    j.job_title,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    jobs j ON e.job_id = j.job_id;
+
+CREATE TRIGGER check_salary BEFORE INSERT ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < (SELECT min_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+            RAISE (ABORT, 'Salary is below minimum for this job.')
+        WHEN NEW.salary > (SELECT max_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+            RAISE (ABORT, 'Salary is above maximum for this job.')
+    END;
+END;
+
+SELECT * FROM employee_details;
+SELECT total_changes();
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';

@@ -1,0 +1,42 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice Smith', 'Sales', 50000.00),
+('Bob Johnson', 'Marketing', 60000.00),
+('Charlie Brown', 'Engineering', 75000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT department, AVG(salary) FROM employees GROUP BY department HAVING AVG(salary) > 55000.00;
+
+CREATE VIEW high_earners AS
+SELECT name, department, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT * FROM high_earners;
+
+PRAGMA table_info(employees);
+
+SELECT CASE WHEN EXISTS (SELECT 1 FROM employees WHERE salary > 100000) THEN 'High earners exist' ELSE 'No high earners' END;
+
+CREATE TABLE salary_audit (
+    employee_id INTEGER,
+    old_salary REAL,
+    new_salary REAL,
+    change_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER salary_update
+AFTER UPDATE OF salary ON employees
+BEGIN
+    INSERT INTO salary_audit (employee_id, old_salary, new_salary)
+    VALUES (OLD.id, OLD.salary, NEW.salary);
+END;
+
+UPDATE employees SET salary = 80000.00 WHERE name = 'Charlie Brown';
+
+SELECT * FROM salary_audit;

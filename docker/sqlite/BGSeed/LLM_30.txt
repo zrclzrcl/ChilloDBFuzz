@@ -1,0 +1,87 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INTEGER,
+    FOREIGN KEY (location_id) REFERENCES locations(location_id)
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    zip_code VARCHAR(10)
+);
+
+INSERT INTO locations (address, city, state, zip_code) VALUES ('123 Main St', 'Anytown', 'CA', '91234');
+INSERT INTO departments (department_name, location_id) VALUES ('Sales', 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Jane', 'Smith', '2023-03-20', 75000.00, 1);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.department_name,
+    l.city
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    locations l ON d.location_id = l.location_id;
+
+SELECT * FROM employee_details;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+PRAGMA table_info(employees);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+-- Test WITHOUT ROWID tables (SQLite specific)
+CREATE TABLE no_rowid_test (
+  id INTEGER NOT NULL,
+  value TEXT,
+  PRIMARY KEY (id)
+) WITHOUT ROWID;
+
+INSERT INTO no_rowid_test (id, value) VALUES (1, 'Test Value');
+
+SELECT * FROM no_rowid_test;
+
+-- Test triggers (SQLite specific)
+CREATE TABLE audit_log (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name VARCHAR(255),
+    row_id INTEGER,
+    change_type VARCHAR(50),
+    change_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER employee_salary_update
+AFTER UPDATE OF salary ON employees
+BEGIN
+    INSERT INTO audit_log (table_name, row_id, change_type)
+    VALUES ('employees', OLD.employee_id, 'salary_update');
+END;
+
+UPDATE employees SET salary = 80000.00 WHERE first_name = 'John';
+
+SELECT * FROM audit_log;
+
+-- Test virtual tables (SQLite specific - FTS5)
+CREATE VIRTUAL TABLE email USING fts5(sender, title, body);
+INSERT INTO email (sender, title, body) VALUES ('user1@example.com', 'Important Update', 'This is the body of an important email update.');
+SELECT * FROM email WHERE email MATCH 'important';

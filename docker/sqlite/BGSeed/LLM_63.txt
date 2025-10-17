@@ -1,0 +1,90 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date TEXT NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (job_id) REFERENCES jobs(job_id),
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name TEXT NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER,
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id),
+    FOREIGN KEY (location_id) REFERENCES locations(location_id)
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT,
+    postal_code TEXT,
+    city TEXT,
+    state_province TEXT,
+    country_id TEXT
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+INSERT INTO locations (address, postal_code, city, state_province, country_id) VALUES
+('2017 Shinagawa Seaside Park Tower', '140-0002', 'Tokyo', NULL, 'JP'),
+('Magdalen Centre, Robert Robinson Avenue', 'OX4 3GA', 'Oxford', 'Oxfordshire', 'UK');
+
+INSERT INTO departments (department_name, manager_id, location_id) VALUES
+('Sales', NULL, 1),
+('Development', NULL, 2);
+
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES
+('Sales Representative', 40000, 80000),
+('Software Engineer', 60000, 120000);
+
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '2022-01-15', 1, 50000, 0.15, NULL, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '2023-03-20', 2, 70000, NULL, NULL, 2);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.department_name
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id;
+
+CREATE TRIGGER check_salary BEFORE INSERT ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < (SELECT min_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+            RAISE(FAIL, 'Salary is below the minimum salary for the job')
+        WHEN NEW.salary > (SELECT max_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+            RAISE(FAIL, 'Salary is above the maximum salary for the job')
+    END;
+END;
+
+SELECT * FROM employee_details;
+
+SELECT location_id, address FROM locations WHERE city = 'Tokyo';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 1;
+
+DELETE FROM departments WHERE department_name = 'Development';
+
+SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'employees';
+
+SELECT COUNT(*) FROM employees;

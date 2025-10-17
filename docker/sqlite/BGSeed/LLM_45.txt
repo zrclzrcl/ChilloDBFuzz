@@ -1,0 +1,59 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE artists (
+    artist_id INTEGER PRIMARY KEY,
+    artist_name TEXT NOT NULL
+);
+
+CREATE TABLE albums (
+    album_id INTEGER PRIMARY KEY,
+    album_name TEXT NOT NULL,
+    artist_id INTEGER,
+    FOREIGN KEY (artist_id) REFERENCES artists(artist_id)
+);
+
+CREATE TABLE tracks (
+    track_id INTEGER PRIMARY KEY,
+    track_name TEXT NOT NULL,
+    album_id INTEGER,
+    duration INTEGER, -- Duration in seconds
+    FOREIGN KEY (album_id) REFERENCES albums(album_id)
+);
+
+INSERT INTO artists (artist_name) VALUES ('The Beatles');
+INSERT INTO artists (artist_name) VALUES ('Queen');
+
+INSERT INTO albums (album_name, artist_id) VALUES ('Abbey Road', 1);
+INSERT INTO albums (album_name, artist_id) VALUES ('A Night at the Opera', 2);
+
+INSERT INTO tracks (track_name, album_id, duration) VALUES ('Come Together', 1, 260);
+INSERT INTO tracks (track_name, album_id, duration) VALUES ('Bohemian Rhapsody', 2, 355);
+
+CREATE VIEW artist_album_tracks AS
+SELECT
+    a.artist_name,
+    al.album_name,
+    t.track_name,
+    t.duration
+FROM
+    artists a
+JOIN
+    albums al ON a.artist_id = al.artist_id
+JOIN
+    tracks t ON al.album_id = t.album_id;
+
+SELECT * FROM artist_album_tracks;
+
+CREATE TRIGGER track_duration_check
+BEFORE INSERT ON tracks
+BEGIN
+    SELECT CASE
+        WHEN NEW.duration < 0 THEN
+            RAISE (ABORT,'Track duration must be non-negative')
+    END;
+END;
+
+INSERT INTO tracks (track_name, album_id, duration) VALUES ('Invalid Track', 1, -10); -- This will trigger the error.  Try commenting it out to have the script execute successfully.
+
+CREATE INDEX idx_artist_name ON artists (artist_name);
+
+SELECT artist_name FROM artists WHERE artist_name LIKE 'The%';

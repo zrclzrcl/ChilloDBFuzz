@@ -1,0 +1,50 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL
+);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES
+('John', 'Doe', '2022-01-15', 60000.00),
+('Jane', 'Smith', '2023-03-01', 75000.00),
+('Robert', 'Jones', '2022-06-10', 55000.00),
+('Alice', 'Brown', '2023-09-20', 80000.00);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+UPDATE employees SET salary = salary * 1.1 WHERE hire_date < '2023-01-01';
+
+DELETE FROM employees WHERE salary < 58000;
+
+SELECT * FROM employees ORDER BY last_name;
+
+SELECT AVG(salary) FROM employees;
+
+-- SQLite specific: Using PRAGMA to check database integrity
+PRAGMA integrity_check;
+
+-- SQLite specific: VACUUM to defragment the database
+VACUUM;
+
+-- Adding a CHECK constraint
+ALTER TABLE employees ADD COLUMN department TEXT CHECK (department IN ('Sales', 'Marketing', 'Engineering'));
+
+UPDATE employees SET department = 'Sales' WHERE id = 1;
+UPDATE employees SET department = 'Marketing' WHERE id = 2;
+UPDATE employees SET department = 'Engineering' WHERE id = 4;
+
+-- Demonstrating a conflict resolution strategy
+CREATE TABLE salary_history (
+  employee_id INTEGER,
+  salary REAL,
+  change_date DATE,
+  FOREIGN KEY (employee_id) REFERENCES employees(id)
+  ON CONFLICT REPLACE
+);
+
+INSERT INTO salary_history (employee_id, salary, change_date) VALUES (1, 60000.00, '2022-01-15');
+INSERT INTO salary_history (employee_id, salary, change_date) VALUES (1, 66000.00, '2023-01-16'); -- This will REPLACE the previous entry for employee_id 1.
+
+SELECT * FROM salary_history;

@@ -1,0 +1,68 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date TEXT NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'Programmer', 60000, 120000),
+(2, 'Accountant', 50000, 100000),
+(3, 'Salesperson', 40000, 80000);
+
+INSERT INTO departments (department_id, department_name, location_id) VALUES
+(10, 'Administration', 1700),
+(20, 'Marketing', 1800),
+(30, 'Purchasing', 1700);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 75000, 10),
+('Jane', 'Smith', 'jane.smith@example.com', '2023-03-01', 2, 60000, 20),
+('Robert', 'Jones', 'robert.jones@example.com', '2023-05-10', 3, 50000, 30);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.department_name,
+    j.job_title
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    jobs j ON e.job_id = j.job_id;
+
+CREATE TRIGGER update_salary
+AFTER UPDATE OF salary ON employees
+BEGIN
+    SELECT RAISE(FAIL, 'Salary cannot be updated');
+END;
+
+PRAGMA integrity_check;
+PRAGMA table_info(employees);
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+SELECT last_insert_rowid();
+SELECT typeof(salary) FROM employees;
+SELECT DISTINCT department_id FROM employees;

@@ -1,0 +1,116 @@
+CREATE TABLE products (
+  product_id INTEGER PRIMARY KEY,
+  product_name TEXT NOT NULL,
+  price REAL NOT NULL CHECK (price > 0),
+  category TEXT
+);
+
+CREATE TABLE customers (
+  customer_id INTEGER PRIMARY KEY,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT UNIQUE,
+  phone TEXT
+);
+
+CREATE TABLE orders (
+  order_id INTEGER PRIMARY KEY,
+  customer_id INTEGER NOT NULL,
+  order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+  total_amount REAL,
+  FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+  order_item_id INTEGER PRIMARY KEY,
+  order_id INTEGER NOT NULL,
+  product_id INTEGER NOT NULL,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  unit_price REAL NOT NULL,
+  FOREIGN KEY (order_id) REFERENCES orders(order_id),
+  FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('Office Chair', 150.00, 'Furniture'),
+('Desk', 300.00, 'Furniture');
+
+INSERT INTO customers (first_name, last_name, email, phone) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-1234'),
+('Jane', 'Smith', 'jane.smith@example.com', '555-5678'),
+('Peter', 'Jones', 'peter.jones@example.com', '555-9012');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 375.00),
+(1, 300.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 1, 75.00),
+(2, 4, 2, 150.00),
+(3, 5, 1, 300.00);
+
+CREATE VIEW customer_orders AS
+SELECT c.first_name, c.last_name, o.order_id, o.order_date, o.total_amount
+FROM customers c JOIN orders o ON c.customer_id = o.customer_id;
+
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+BEGIN
+  UPDATE orders
+  SET total_amount = (SELECT SUM(quantity * unit_price) FROM order_items WHERE order_id = NEW.order_id)
+  WHERE order_id = NEW.order_id;
+END;
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 200;
+SELECT first_name, last_name FROM customers WHERE email LIKE '%example.com';
+SELECT category, AVG(price) AS average_price FROM products GROUP BY category;
+SELECT c.first_name, c.last_name, COUNT(o.order_id) AS order_count FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id ORDER BY order_count DESC;
+SELECT product_name FROM products EXCEPT SELECT product_name FROM products WHERE category = 'Furniture';
+SELECT product_name FROM products WHERE product_id IN (SELECT product_id FROM order_items WHERE quantity > 1);
+SELECT DISTINCT category FROM products;
+SELECT typeof(product_id) FROM products;
+SELECT last_insert_rowid();
+PRAGMA table_info(products);
+SELECT sql FROM sqlite_master WHERE type='table' AND name='products';
+SELECT substr('abcdefg', 3, 4);
+SELECT replace('Hello World', 'World', 'SQLite');
+SELECT randomblob(10);
+SELECT date('now');
+SELECT datetime('now', '+1 day');
+SELECT strftime('%Y-%m-%d %H:%M:%S', 'now');
+SELECT coalesce(NULL, 'Default Value');
+SELECT NULLIF('same', 'same');
+SELECT CASE WHEN price > 100 THEN 'Expensive' ELSE 'Affordable' END AS price_range, product_name FROM products;
+SELECT CAST(123.45 AS INTEGER);
+SELECT RANDOM();
+SELECT ABS(-10);
+SELECT ROUND(3.14159, 2);
+SELECT UPPER('lowercase');
+SELECT LOWER('UPPERCASE');
+SELECT LENGTH('string');
+SELECT TRIM('  whitespace  ');
+SELECT instr('abcdefg', 'cde');
+SELECT printf('The price is %.2f', 19.99);
+
+INSERT INTO products (product_name, price, category) VALUES ('Special Product', 100, 'Special');
+SELECT * FROM products WHERE category GLOB '*eci*';
+SELECT quote('O''Reilly');
+SELECT total(price) FROM products;
+SELECT zeroblob(50);
+SELECT group_concat(product_name, '; ') FROM products;
+SELECT last_value(product_name) OVER (ORDER BY product_id) FROM products;
+SELECT nth_value(product_name, 2) OVER (ORDER BY product_id) FROM products;
+SELECT ntile(4) OVER (ORDER BY price) FROM products;
+SELECT LEAD(price, 1, 0) OVER (ORDER BY product_id) AS next_price FROM products;
+SELECT LAG(price, 1, 0) OVER (ORDER BY product_id) AS previous_price FROM products;
+
+SELECT * FROM products ORDER BY RANDOM() LIMIT 1;
+
+DROP VIEW IF EXISTS customer_orders;
+DROP TRIGGER IF EXISTS update_order_total;

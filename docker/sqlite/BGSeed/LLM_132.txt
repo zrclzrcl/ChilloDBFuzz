@@ -1,0 +1,25 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    department TEXT,
+    salary REAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 50000.00),
+('Bob', 'Engineering', 75000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 60000;
+
+CREATE TRIGGER update_salary
+AFTER UPDATE OF salary ON employees
+BEGIN
+    UPDATE employees SET salary = NEW.salary * 1.05 WHERE id = NEW.id AND NEW.salary < OLD.salary;
+END;
+
+SELECT * FROM high_earners;
+
+PRAGMA integrity_check;

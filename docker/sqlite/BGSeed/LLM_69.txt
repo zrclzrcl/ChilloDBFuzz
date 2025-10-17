@@ -1,0 +1,32 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    category TEXT DEFAULT 'Uncategorized',
+    inventory INTEGER NOT NULL DEFAULT 0
+);
+
+INSERT INTO products (name, description, price, category, inventory) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.50, 'Electronics', 10),
+('Mouse', 'Ergonomic wireless mouse', 25.99, 'Electronics', 50),
+('Keyboard', 'Mechanical keyboard with RGB lighting', 79.99, 'Electronics', 30),
+('T-shirt', 'Cotton T-shirt', 15.00, 'Clothing', 100);
+
+CREATE VIEW product_summary AS
+SELECT category, COUNT(*) AS product_count, AVG(price) AS average_price
+FROM products
+GROUP BY category;
+
+CREATE TRIGGER update_inventory
+AFTER INSERT ON products
+BEGIN
+    UPDATE products SET inventory = inventory + NEW.inventory WHERE id = NEW.id;
+END;
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 150;
+SELECT category, product_count FROM product_summary ORDER BY average_price DESC;
+SELECT name, description FROM products WHERE description LIKE '%High%';
+SELECT typeof(id) FROM products;
+SELECT last_insert_rowid();
+PRAGMA table_info(products);

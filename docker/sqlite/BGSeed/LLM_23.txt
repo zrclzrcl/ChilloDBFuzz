@@ -1,0 +1,68 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    email TEXT UNIQUE,
+    hire_date DATE DEFAULT (date('now')),
+    salary REAL CHECK (salary > 0),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    location TEXT
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', 90000.00, 3);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.id,
+    e.first_name,
+    e.last_name,
+    e.email,
+    e.salary,
+    d.name AS department
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+PRAGMA foreign_keys = ON;
+
+INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES ('Alice', 'Wonderland', 'alice@example.com', 80000.00, (SELECT id FROM departments WHERE name = 'Engineering'));
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = (SELECT id FROM departments WHERE name = 'Sales');
+
+DELETE FROM employees WHERE salary < 50000;
+
+SELECT * FROM employee_details;
+
+SELECT last_insert_rowid();
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+-- Trigger example
+CREATE TRIGGER employee_salary_check
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+  SELECT CASE
+    WHEN NEW.salary < 0 THEN
+      RAISE(FAIL, 'Salary cannot be negative')
+  END;
+END;
+
+UPDATE employees SET salary = -100 WHERE first_name = 'John'; -- This will fail

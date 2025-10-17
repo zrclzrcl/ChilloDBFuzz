@@ -1,0 +1,90 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'Software Engineer', 60000, 120000),
+(2, 'Data Scientist', 70000, 130000),
+(3, 'Project Manager', 80000, 150000);
+
+INSERT INTO departments (department_id, department_name) VALUES
+(10, 'IT'),
+(20, 'Marketing'),
+(30, 'Sales');
+
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+(100, 'John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 80000, 10),
+(101, 'Jane', 'Smith', 'jane.smith@example.com', '2022-03-20', 2, 90000, 10),
+(102, 'Peter', 'Jones', 'peter.jones@example.com', '2022-05-10', 3, 100000, 20),
+(103, 'Alice', 'Brown', 'alice.brown@example.com', '2022-07-01', 1, 75000, 30);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.department_name,
+    j.job_title,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    jobs j ON e.job_id = j.job_id;
+
+SELECT * FROM employee_details WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT department_name, SUM(salary) AS total_salary FROM employee_details GROUP BY department_name HAVING SUM(salary) > 100000;
+
+SELECT last_name, LENGTH(last_name) AS last_name_length FROM employees ORDER BY last_name_length DESC LIMIT 1;
+
+SELECT DISTINCT job_title FROM employee_details;
+
+SELECT first_name, last_name, salary,
+       CASE
+           WHEN salary > 90000 THEN 'High'
+           WHEN salary > 75000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+SELECT e1.first_name AS employee1, e2.first_name AS employee2
+FROM employees e1, employees e2
+WHERE e1.department_id = e2.department_id
+AND e1.employee_id <> e2.employee_id;
+
+SELECT total(salary) OVER (ORDER BY salary) AS cumulative_salary, first_name FROM employees;
+
+SELECT first_name, last_name FROM employees WHERE department_id IN (SELECT department_id FROM departments WHERE department_name LIKE '%IT%');
+
+CREATE TRIGGER check_salary BEFORE INSERT ON employees
+BEGIN
+  SELECT CASE
+    WHEN NEW.salary < (SELECT min_salary FROM jobs WHERE job_id = NEW.job_id) OR NEW.salary > (SELECT max_salary FROM jobs WHERE job_id = NEW.job_id)
+    THEN RAISE (ABORT,'Salary is out of range for this job.')
+  END;
+END;

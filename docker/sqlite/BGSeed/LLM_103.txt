@@ -1,0 +1,73 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    category TEXT
+);
+
+CREATE TABLE customers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    join_date DATE DEFAULT (date('now'))
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT (datetime('now')),
+    total REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+CREATE TABLE order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO products (name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('T-shirt', 20.00, 'Clothing'),
+('Jeans', 60.00, 'Clothing');
+
+INSERT INTO customers (name, email) VALUES
+('Alice Smith', 'alice@example.com'),
+('Bob Johnson', 'bob@example.com'),
+('Charlie Brown', 'charlie@example.com');
+
+INSERT INTO orders (customer_id, total) VALUES
+(1, 1225.00),
+(2, 95.00),
+(3, 80.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 2, 1, 25.00),
+(2, 3, 1, 70.00),
+(3, 4, 2, 20.00),
+(3, 5, 1, 60.00);
+
+CREATE VIEW customer_order_summary AS
+SELECT
+    c.name AS customer_name,
+    COUNT(o.id) AS order_count,
+    SUM(o.total) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.name;
+
+SELECT customer_name, order_count, total_spent FROM customer_order_summary WHERE total_spent > (SELECT AVG(total_spent) FROM customer_order_summary);
+
+SELECT name FROM products WHERE price IN (SELECT MAX(price) FROM products UNION ALL SELECT MIN(price) FROM products);
+
+SELECT category, AVG(price) AS average_price FROM products GROUP BY category HAVING average_price > 50;
+
+SELECT id,name, IIF(price > (SELECT AVG(price) FROM products), 'Expensive', 'Affordable') AS price_category FROM products;

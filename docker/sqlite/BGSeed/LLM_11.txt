@@ -1,0 +1,75 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL,
+    description TEXT,
+    category TEXT
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    email TEXT UNIQUE,
+    phone TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    price REAL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Smartphone', 800.00, 'Latest model smartphone', 'Electronics'),
+('T-shirt', 25.00, 'Cotton T-shirt', 'Clothing');
+
+INSERT INTO customers (first_name, last_name, email, phone) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210');
+
+INSERT INTO orders (customer_id, total) VALUES
+(1, 1225.00),
+(2, 825.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 3, 1, 25.00),
+(2, 2, 1, 800.00),
+(2, 3, 1, 25.00);
+
+CREATE VIEW customer_order_summary AS
+SELECT
+    c.first_name,
+    c.last_name,
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.total) AS total_spent
+FROM
+    customers c
+LEFT JOIN
+    orders o ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id;
+
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+BEGIN
+    UPDATE orders
+    SET total = (SELECT SUM(price * quantity) FROM order_items WHERE order_id = NEW.order_id)
+    WHERE order_id = NEW.order_id;
+END;
+
+PRAGMA integrity_check;

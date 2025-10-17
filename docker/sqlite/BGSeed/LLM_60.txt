@@ -1,0 +1,68 @@
+PRAGMA foreign_keys=ON;
+
+-- Create a table with various data types and constraints
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20) CHECK (LENGTH(phone_number) >= 10),
+    hire_date DATE DEFAULT (date('now')),
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- Create a related table for departments
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL
+);
+
+-- Insert some sample data into departments
+INSERT INTO departments (name) VALUES ('Sales');
+INSERT INTO departments (name) VALUES ('Marketing');
+INSERT INTO departments (name) VALUES ('Engineering');
+
+-- Insert some sample data into employees
+INSERT INTO employees (first_name, last_name, email, phone_number, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', 50000.00, 1);
+INSERT INTO employees (first_name, last_name, email, phone_number, salary, department_id) VALUES
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', 60000.00, 2);
+INSERT INTO employees (first_name, last_name, email, phone_number, salary, department_id) VALUES
+('Peter', 'Jones', 'peter.jones@example.com', '555-123-4567', 70000.00, 3);
+
+-- Create a view for combining employee and department data
+CREATE VIEW employee_details AS
+SELECT
+    e.id,
+    e.first_name,
+    e.last_name,
+    e.email,
+    e.salary,
+    d.name AS department_name
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id;
+
+-- Select data from the view
+SELECT * FROM employee_details;
+
+-- Perform a complex query with aggregation and grouping
+SELECT department_name, AVG(salary) AS average_salary
+FROM employee_details
+GROUP BY department_name
+ORDER BY average_salary DESC;
+
+-- Test a SQLite specific function: last_insert_rowid()
+SELECT last_insert_rowid();
+
+-- Test a query that uses a subquery and aggregate function
+SELECT MAX(salary) FROM employees WHERE department_id = (SELECT id FROM departments WHERE name = 'Sales');
+
+-- Test an update statement with a WHERE clause
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = (SELECT id FROM departments WHERE name = 'Engineering');
+
+-- Test a delete statement.
+DELETE FROM employees WHERE first_name = 'John' AND last_name = 'Doe';

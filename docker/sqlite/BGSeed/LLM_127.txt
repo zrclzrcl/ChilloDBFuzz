@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL
+);
+
+CREATE INDEX IF NOT EXISTS idx_last_name ON employees (last_name);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES
+('John', 'Doe', '2020-01-15', 60000.00),
+('Jane', 'Smith', '2021-03-01', 75000.00),
+('Peter', 'Jones', '2022-05-10', 80000.00);
+
+SELECT first_name, last_name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2020-01-01' AND Date('now', '-1 year');
+
+SELECT last_name, COUNT(*) AS employee_count FROM employees GROUP BY last_name HAVING COUNT(*) > 1;
+
+-- SQLite specific: attempts to exploit rowid, which is an alias for the primary key
+SELECT rowid, first_name FROM employees WHERE rowid = 1;
+
+-- SQLite Specific:  check if a table is writable
+PRAGMA table_info(employees);

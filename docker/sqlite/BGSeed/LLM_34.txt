@@ -1,0 +1,71 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    hire_date DATE,
+    salary REAL,
+    department_id INTEGER,
+    UNIQUE (first_name, last_name)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    location TEXT
+);
+
+CREATE TABLE projects (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    start_date DATE,
+    end_date DATE,
+    budget REAL
+);
+
+CREATE TABLE employee_projects (
+    employee_id INTEGER,
+    project_id INTEGER,
+    role TEXT,
+    FOREIGN KEY (employee_id) REFERENCES employees(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    PRIMARY KEY (employee_id, project_id)
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Jane', 'Smith', '2023-03-10', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Peter', 'Jones', '2022-08-01', 65000.00, 1);
+
+INSERT INTO projects (name, start_date, end_date, budget) VALUES ('Project Alpha', '2023-01-01', '2023-12-31', 100000.00);
+INSERT INTO projects (name, start_date, end_date, budget) VALUES ('Project Beta', '2023-06-01', '2024-05-31', 150000.00);
+
+INSERT INTO employee_projects (employee_id, project_id, role) VALUES (1, 1, 'Manager');
+INSERT INTO employee_projects (employee_id, project_id, role) VALUES (2, 2, 'Developer');
+INSERT INTO employee_projects (employee_id, project_id, role) VALUES (3, 1, 'Analyst');
+
+CREATE VIEW EmployeeDepartment AS
+SELECT e.first_name, e.last_name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+CREATE TRIGGER update_salary
+AFTER UPDATE OF salary ON employees
+BEGIN
+  INSERT INTO salary_changes (employee_id, old_salary, new_salary, change_date) VALUES (OLD.id, OLD.salary, NEW.salary, date('now'));
+END;
+
+CREATE TABLE salary_changes (
+  employee_id INTEGER,
+  old_salary REAL,
+  new_salary REAL,
+  change_date DATE
+);
+
+CREATE INDEX idx_employee_department ON employees (department_id);
+
+PRAGMA table_info(employees);
+PRAGMA index_list(employees);
+PRAGMA foreign_key_list(employee_projects);

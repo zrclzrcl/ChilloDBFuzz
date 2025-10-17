@@ -1,0 +1,37 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    title TEXT,
+    salary REAL
+);
+
+CREATE VIEW employee_summary AS
+SELECT title, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY title;
+
+CREATE TRIGGER salary_check BEFORE INSERT ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < 0 THEN
+            RAISE (ABORT,'Salary cannot be negative')
+    END;
+END;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+CREATE TEMP TABLE temp_employees AS SELECT * FROM employees;
+
+INSERT INTO departments (name) VALUES ('Engineering'), ('Sales');
+INSERT INTO employees (name, title, salary, department_id) VALUES ('Alice', 'Engineer', 80000, 1), ('Bob', 'Sales Rep', 60000, 2);
+
+SELECT * FROM employee_summary;

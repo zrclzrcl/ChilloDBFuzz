@@ -1,0 +1,91 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO users (username, email, password_hash) VALUES
+('testuser1', 'test1@example.com', 'hashed_password_1'),
+('testuser2', 'test2@example.com', 'hashed_password_2');
+
+INSERT INTO posts (user_id, title, content) VALUES
+(1, 'First Post', 'This is the first post content.'),
+(1, 'Second Post', 'This is the second post content.'),
+(2, 'Another Post', 'Content for another post.');
+
+INSERT INTO comments (post_id, user_id, content) VALUES
+(1, 2, 'Great post!'),
+(2, 1, 'Interesting thoughts.');
+
+-- Example of a window function usage and some edge cases
+SELECT
+    p.title,
+    COUNT(c.id) OVER (PARTITION BY p.id) AS comment_count,
+    CASE
+        WHEN LENGTH(p.content) > 50 THEN SUBSTR(p.content, 1, 50) || '...'
+        ELSE p.content
+    END AS short_content
+FROM
+    posts p
+LEFT JOIN
+    comments c ON p.id = c.post_id
+WHERE p.user_id = 1 OR p.title LIKE '%Post%'
+ORDER BY p.created_at DESC;
+
+-- Example of using pragma
+PRAGMA table_info(users);
+
+-- Example using a recursive CTE (Common Table Expression) --
+-- create a table for hierarchical data
+
+CREATE TABLE employees (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name VARCHAR(255) NOT NULL,
+  manager_id INTEGER,
+  FOREIGN KEY (manager_id) REFERENCES employees(id)
+);
+
+INSERT INTO employees (name, manager_id) VALUES
+('Alice', NULL),
+('Bob', 1),
+('Charlie', 1),
+('David', 2);
+
+WITH RECURSIVE EmployeeHierarchy AS (
+    SELECT id, name, manager_id, 0 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT e.id, e.name, e.manager_id, eh.level + 1
+    FROM employees e
+    JOIN EmployeeHierarchy eh ON e.manager_id = eh.id
+)
+SELECT * FROM EmployeeHierarchy ORDER BY level, id;
+
+-- Create an index and attempt to drop it conditionally (error handling)
+CREATE INDEX idx_users_username ON users(username);
+DROP INDEX IF EXISTS idx_users_username;

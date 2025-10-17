@@ -1,0 +1,70 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    category_id INTEGER,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, description, price, category_id) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 1),
+('The Lord of the Rings', 'A classic fantasy novel', 15.00, 2),
+('T-Shirt', 'Comfortable cotton t-shirt', 20.00, 3);
+
+CREATE VIEW product_summary AS
+SELECT p.name, p.price, c.name AS category
+FROM products p
+JOIN categories c ON p.category_id = c.id;
+
+CREATE INDEX idx_products_category_id ON products(category_id);
+
+CREATE TRIGGER update_price
+BEFORE UPDATE ON products
+FOR EACH ROW
+BEGIN
+  SELECT CASE
+    WHEN NEW.price < 0 THEN
+      RAISE(FAIL, 'Price cannot be negative')
+  END;
+END;
+
+CREATE VIRTUAL TABLE fts_products USING fts5(name, description, tokenize = 'porter unicode61');
+
+INSERT INTO fts_products (rowid, name, description)
+SELECT id, name, description
+FROM products;
+
+CREATE TRIGGER products_ai AFTER INSERT ON products BEGIN
+  INSERT INTO fts_products(rowid, name, description) VALUES (new.id, new.name, new.description);
+END;
+
+CREATE TRIGGER products_ad AFTER DELETE ON products BEGIN
+  INSERT INTO fts_products(fts_products, rowid, name, description) VALUES('delete', old.id, old.name, old.description);
+END;
+
+CREATE TRIGGER products_au AFTER UPDATE ON products BEGIN
+  INSERT INTO fts_products(fts_products, rowid, name, description) VALUES('delete', old.id, old.name, old.description);
+  INSERT INTO fts_products(rowid, name, description) VALUES (new.id, new.name, new.description);
+END;
+
+SELECT * FROM pragma_table_info('products');
+
+PRAGMA index_list('products');
+
+PRAGMA foreign_key_list('products');
+
+SELECT json_object('id', 1, 'name', 'Test Product');
+
+SELECT quote('This is a string with a single quote.');
+
+SELECT total_changes();
+
+SELECT last_insert_rowid();

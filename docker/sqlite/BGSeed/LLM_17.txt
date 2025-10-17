@@ -1,0 +1,57 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', '2021-05-20', 75000.00, 2),
+('Peter', 'Jones', '2023-03-10', 90000.00, 3);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+CREATE VIEW employee_summary AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.department_name
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id;
+
+PRAGMA table_info(employees);
+PRAGMA index_list(employees);
+
+BEGIN TRANSACTION;
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Alice', 'Brown', '2024-01-01', 80000, 1);
+SAVEPOINT my_savepoint;
+DELETE FROM employees WHERE employee_id = 1;
+ROLLBACK TO my_savepoint;
+COMMIT;
+
+SELECT * FROM employee_summary;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+UPDATE employees SET email = first_name || '.' || last_name || '@example.com';
+
+SELECT typeof(employee_id) FROM employees;

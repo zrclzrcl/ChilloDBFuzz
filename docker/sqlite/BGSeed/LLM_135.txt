@@ -1,0 +1,30 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER,
+    salary REAL
+);
+
+INSERT INTO employees (name, age, salary) VALUES ('Alice', 30, 50000.00);
+INSERT INTO employees (name, age, salary) VALUES ('Bob', 25, 40000.00);
+INSERT INTO employees (name, age, salary) VALUES ('Charlie', 35, 60000.00);
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 45000.00;
+
+CREATE TRIGGER salary_check
+BEFORE INSERT ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < 0 THEN
+            RAISE (ABORT, 'Salary cannot be negative')
+    END;
+END;
+
+SELECT * FROM pragma_function_list WHERE name LIKE 'json%'; -- Check for JSON extension functions
+
+SELECT last_insert_rowid(); -- Get the last inserted row id. Useful for subsequent operations.
+
+PRAGMA integrity_check;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees'; -- Retrieve the CREATE TABLE statement

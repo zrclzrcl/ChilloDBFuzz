@@ -1,0 +1,29 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'Sales', 50000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Bob', 'Engineering', 75000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Charlie', 'Sales', 55000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+CREATE VIEW sales_employees AS
+SELECT name, salary FROM employees WHERE department = 'Sales';
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+UPDATE employees SET hire_date = '2023-01-15' WHERE name = 'Alice';
+
+PRAGMA table_info(employees);
+
+SELECT * FROM sales_employees;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+-- Testing SQLite specific features
+CREATE VIRTUAL TABLE fts_employees USING fts5(name, department, salary);
+INSERT INTO fts_employees (name, department, salary) SELECT name, department, salary FROM employees;
+SELECT * FROM fts_employees WHERE fts_employees MATCH 'Alice';

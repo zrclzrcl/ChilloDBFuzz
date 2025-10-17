@@ -1,0 +1,38 @@
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  price REAL NOT NULL CHECK (price > 0),
+  description TEXT,
+  category TEXT
+);
+
+INSERT INTO products (name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('Smartphone', 800.00, 'Latest smartphone model', 'Electronics'),
+('T-shirt', 25.00, 'Cotton T-shirt', 'Clothing');
+
+CREATE INDEX idx_products_category ON products (category);
+
+SELECT * FROM products WHERE price > 500;
+
+UPDATE products SET price = price * 1.1 WHERE category = 'Electronics';
+
+DELETE FROM products WHERE id = 3;
+
+-- SQLite Specific: Using WITHOUT ROWID
+CREATE TABLE sessions (
+    session_id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    last_active DATETIME DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
+) WITHOUT ROWID;
+
+INSERT INTO sessions (session_id, user_id) VALUES ('abc123xyz', 123);
+
+SELECT last_active FROM sessions WHERE user_id = 123;
+
+-- SQLite Specific: Using a virtual table for full-text search. Requires FTS5 extension to be enabled.
+CREATE VIRTUAL TABLE emails USING fts5(sender, recipient, title, body);
+
+INSERT INTO emails(sender, recipient, title, body) VALUES('me@example.com', 'you@example.com', 'Important Update', 'This is the body of the email.');
+
+SELECT * FROM emails WHERE emails MATCH 'Update';

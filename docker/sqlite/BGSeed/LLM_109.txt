@@ -1,0 +1,46 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name TEXT NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    city TEXT,
+    state TEXT
+);
+
+INSERT INTO departments (department_name, location_id) VALUES ('Sales', 1);
+INSERT INTO departments (department_name, location_id) VALUES ('Marketing', 2);
+
+INSERT INTO locations (city, state) VALUES ('New York', 'NY');
+INSERT INTO locations (city, state) VALUES ('Los Angeles', 'CA');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Jane', 'Smith', '2023-05-20', 75000.00, 2);
+
+SELECT e.first_name, e.last_name, d.department_name, l.city
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+JOIN locations l ON d.location_id = l.location_id
+WHERE e.salary > (SELECT AVG(salary) FROM employees)
+UNION ALL
+SELECT 'Total', 'Count', CAST(COUNT(* ) AS TEXT), 'Employees' FROM employees;
+
+PRAGMA table_info(employees);
+
+CREATE VIRTUAL TABLE vtab USING fts5(content='employees', first_name, last_name);
+
+INSERT INTO vtab(docid, first_name, last_name) SELECT employee_id, first_name, last_name FROM employees;
+
+SELECT docid FROM vtab WHERE vtab MATCH 'John';

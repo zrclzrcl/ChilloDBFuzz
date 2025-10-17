@@ -1,0 +1,56 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    salary REAL,
+    hire_date DATE DEFAULT (date('now'))
+);
+
+INSERT INTO employees (first_name, last_name, salary) VALUES
+('Alice', 'Smith', 60000.00),
+('Bob', 'Johnson', 75000.50),
+('Charlie', 'Brown', 50000.00),
+('David', 'Wilson', 90000.75);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT first_name, last_name FROM employees ORDER BY salary DESC LIMIT 2;
+
+-- Test type affinity and casting
+INSERT INTO employees (first_name, last_name, salary) VALUES ('Eve', 'IntegerSalary', '75000');
+SELECT * FROM employees WHERE salary = 75000;
+
+-- Test date functions and constraints
+INSERT INTO employees (first_name, last_name, hire_date) VALUES ('Frank', 'Future', '2025-01-01'); -- Should work fine even if default value is used on other rows
+
+-- Test UNIQUE constraint on derived column.  SQLite doesn't directly support it, but this is a useful edge case.
+CREATE TABLE IF NOT EXISTS derived_unique (
+    id INTEGER PRIMARY KEY,
+    val1 INTEGER,
+    val2 INTEGER,
+    CONSTRAINT unique_pair UNIQUE (val1, val2)
+);
+
+INSERT INTO derived_unique (val1, val2) VALUES (1, 2);
+-- INSERT INTO derived_unique (val1, val2) VALUES (1, 2);  -- This will fail due to constraint.  Removed for initial seed generation, but keep the structure
+
+-- Test common table expression and recursive queries (SQLite 3.8.3+)
+
+WITH RECURSIVE
+  cnt(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x+1 FROM cnt
+    WHERE x<5
+  )
+SELECT x FROM cnt;
+
+-- Test json support added in 3.9
+SELECT json('{"a": 1, "b": [2, 3, 4]}');
+SELECT json_extract('{"a": 1, "b": [2, 3, 4]}', '$.a');
+
+-- Test PRAGMA statements
+PRAGMA table_info(employees);

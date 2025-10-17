@@ -1,0 +1,55 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    UNIQUE (first_name, last_name)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO departments (department_name) VALUES ('Sales');
+INSERT INTO departments (department_name) VALUES ('Marketing');
+INSERT INTO departments (department_name) VALUES ('Engineering');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Jane', 'Smith', '2023-03-20', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Peter', 'Jones', '2023-07-10', 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+SELECT department_name, COUNT(*) AS employee_count FROM departments d JOIN employees e ON d.department_id = e.department_id GROUP BY department_name;
+
+ALTER TABLE employees ADD COLUMN bonus INTEGER DEFAULT 0;
+
+UPDATE employees SET bonus = salary * 0.1 WHERE department_id = 3;
+
+SELECT employee_id, first_name, last_name, salary + bonus AS total_compensation FROM employees ORDER BY total_compensation DESC;
+
+CREATE VIEW employee_summary AS SELECT first_name, last_name, department_name FROM employees e JOIN departments d ON e.department_id = d.department_id;
+
+SELECT * FROM employee_summary WHERE department_name LIKE 'M%';
+
+-- Vacuum the database to potentially trigger edge cases in storage.
+VACUUM;
+
+-- Test fractional cascading index (requires SQLite version >= 3.38.0, likely not supported)
+-- CREATE INDEX idx_employees_fractional ON employees(salary);
+
+-- Test PRAGMA statements related to WAL mode and checkpointing
+PRAGMA journal_mode=WAL;
+PRAGMA wal_checkpoint(TRUNCATE);
+PRAGMA journal_mode=DELETE;
+
+-- Test an EXPLAIN QUERY PLAN for a complex query
+EXPLAIN QUERY PLAN SELECT e.first_name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.department_id WHERE e.salary > 70000 ORDER BY d.department_name, e.first_name;
+
+-- Attempt an ATTACH DATABASE (potential file I/O issues) - REQUIRES A SECOND DATABASE FILE
+-- ATTACH DATABASE 'test2.db' AS db2;
+-- SELECT * FROM db2.some_table; -- if test2.db has table some_table
+-- DETACH DATABASE db2;

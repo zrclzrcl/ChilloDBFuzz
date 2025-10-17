@@ -1,0 +1,94 @@
+CREATE TABLE IF NOT EXISTS employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    hire_date DATE,
+    salary REAL
+);
+
+CREATE TABLE IF NOT EXISTS departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name TEXT NOT NULL,
+    location TEXT
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+    project_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_name TEXT NOT NULL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+CREATE TABLE IF NOT EXISTS employee_projects (
+    employee_id INTEGER,
+    project_id INTEGER,
+    PRIMARY KEY (employee_id, project_id),
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
+    FOREIGN KEY (project_id) REFERENCES projects(project_id)
+);
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES
+('John', 'Doe', '2022-01-15', 60000.00),
+('Jane', 'Smith', '2022-03-20', 75000.00),
+('Peter', 'Jones', '2023-05-10', 80000.00);
+
+INSERT INTO projects (project_name, department_id) VALUES
+('Project Alpha', 1),
+('Project Beta', 2),
+('Project Gamma', 3);
+
+INSERT INTO employee_projects (employee_id, project_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+-- Test triggers. Trigger to ensure salary is positive
+CREATE TRIGGER IF NOT EXISTS check_salary_insert BEFORE INSERT ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < 0 THEN
+            RAISE (ABORT,'Salary cannot be negative')
+    END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS check_salary_update BEFORE UPDATE ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < 0 THEN
+            RAISE (ABORT,'Salary cannot be negative')
+    END;
+END;
+
+-- Test view.  View to show employee full name and department
+CREATE VIEW employee_department AS
+SELECT
+    e.first_name || ' ' || e.last_name AS full_name,
+    d.department_name
+FROM
+    employees e
+INNER JOIN
+    employee_projects ep ON e.employee_id = ep.employee_id
+INNER JOIN
+    projects p ON ep.project_id = p.project_id
+INNER JOIN
+    departments d ON p.department_id = d.department_id;
+
+
+SELECT * FROM employee_department;
+
+-- Insert a row violating trigger. (Should fail)
+INSERT INTO employees (first_name, last_name, hire_date, salary) VALUES ('Trigger', 'Test', '2024-01-01', -100);
+
+-- Attempt an update violating trigger. (Should fail)
+UPDATE employees SET salary = -5000 WHERE employee_id = 1;
+
+-- Test pragma function
+PRAGMA table_info(employees);
+
+-- Test pragma function
+PRAGMA index_list(employee_projects);

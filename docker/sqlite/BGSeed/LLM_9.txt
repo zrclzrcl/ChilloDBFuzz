@@ -1,0 +1,56 @@
+CREATE TABLE artists (
+  artistid INTEGER PRIMARY KEY,
+  artistname TEXT NOT NULL
+);
+
+CREATE TABLE albums (
+  albumid INTEGER PRIMARY KEY,
+  albumname TEXT NOT NULL,
+  artistid INTEGER,
+  FOREIGN KEY (artistid) REFERENCES artists(artistid)
+);
+
+CREATE TABLE tracks (
+  trackid INTEGER PRIMARY KEY,
+  trackname TEXT NOT NULL,
+  albumid INTEGER,
+  mediatypeid INTEGER,
+  genreid INTEGER,
+  composer TEXT,
+  milliseconds INTEGER NOT NULL,
+  bytes INTEGER,
+  unitprice REAL NOT NULL,
+  FOREIGN KEY (albumid) REFERENCES albums(albumid)
+);
+
+CREATE VIEW album_info AS
+SELECT
+  a.artistname,
+  COUNT(al.albumid) AS album_count
+FROM artists AS a
+JOIN albums AS al
+  ON a.artistid = al.artistid
+GROUP BY
+  a.artistname;
+
+CREATE TRIGGER track_insert_trigger
+AFTER INSERT ON tracks
+BEGIN
+  UPDATE albums SET albumname = NEW.trackname WHERE albumid = NEW.albumid;
+END;
+
+CREATE TABLE playlist_track (
+  playlist_id INTEGER,
+  track_id INTEGER,
+  FOREIGN KEY (track_id) REFERENCES tracks (trackid) ON DELETE CASCADE ON UPDATE NO ACTION,
+  PRIMARY KEY (playlist_id, track_id)
+);
+
+CREATE INDEX idx_trackname ON tracks (trackname COLLATE NOCASE);
+
+INSERT INTO artists (artistname) VALUES ('AC/DC');
+INSERT INTO albums (albumname, artistid) VALUES ('Back in Black', 1);
+INSERT INTO tracks (trackname, albumid, mediatypeid, genreid, composer, milliseconds, bytes, unitprice) VALUES ('Hells Bells', 1, 1, 1, 'Angus Young, Malcolm Young, Brian Johnson', 312461, 10375620, 0.99);
+
+SELECT * FROM album_info;
+SELECT name FROM pragma_function_list WHERE name LIKE 'json%'; -- Check for JSON extension

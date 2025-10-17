@@ -1,0 +1,63 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary REAL NOT NULL CHECK (salary > 0),
+    commission_pct REAL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+INSERT INTO departments (department_name) VALUES ('Sales');
+INSERT INTO departments (department_name) VALUES ('Marketing');
+INSERT INTO departments (department_name) VALUES ('IT');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 60000.00, (SELECT department_id FROM departments WHERE department_name = 'Sales'));
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('Jane', 'Smith', 'jane.smith@example.com', '2022-03-20', 75000.00, (SELECT department_id FROM departments WHERE department_name = 'Marketing'));
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('Peter', 'Jones', 'peter.jones@example.com', '2022-05-01', 90000.00, (SELECT department_id FROM departments WHERE department_name = 'IT'));
+
+CREATE INDEX idx_employees_department_id ON employees(department_id);
+
+SELECT * FROM employees WHERE salary > 70000 ORDER BY last_name;
+
+-- SQLite Specific: Using `GLOB` for pattern matching.
+SELECT * FROM employees WHERE email GLOB '*@example.com';
+
+-- SQLite Specific: Testing WITHOUT ROWID table.
+DROP TABLE IF EXISTS no_rowid_table;
+CREATE TABLE no_rowid_table (
+    id INTEGER NOT NULL,
+    value TEXT,
+    PRIMARY KEY (id)
+) WITHOUT ROWID;
+INSERT INTO no_rowid_table (id, value) VALUES (1, 'test');
+SELECT * FROM no_rowid_table;
+
+-- SQLite Specific: Testing STRICT table.
+DROP TABLE IF EXISTS strict_table;
+CREATE TABLE strict_table (
+    id INTEGER,
+    value TEXT
+) STRICT;
+INSERT INTO strict_table (id, value) VALUES (1, 'test');
+SELECT * FROM strict_table;
+
+-- Testing pragma statement
+PRAGMA table_info(employees);

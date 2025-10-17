@@ -1,0 +1,65 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    age INTEGER,
+    salary REAL,
+    department TEXT
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    location TEXT
+);
+
+INSERT INTO employees (name, age, salary, department) VALUES
+('Alice', 30, 60000.0, 'Sales'),
+('Bob', 25, 50000.0, 'Marketing'),
+('Charlie', 35, 70000.0, 'Sales'),
+('David', 40, 80000.0, 'Engineering');
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+-- Try some edge cases with NULL values and constraints.
+INSERT INTO employees (name, age, salary, department) VALUES
+(NULL, 30, 60000.0, 'Sales');
+
+-- Demonstrates UNIQUE constraint (if one were added later)
+-- INSERT INTO departments (name, location) VALUES ('Sales', 'Chicago');
+
+-- Demonstrates CASE WHEN expression
+SELECT name,
+       CASE
+           WHEN age < 30 THEN 'Young'
+           WHEN age >= 30 AND age < 40 THEN 'Middle-aged'
+           ELSE 'Senior'
+       END AS age_group
+FROM employees;
+
+-- Demonstrates aggregate functions and GROUP BY clause
+SELECT department, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department;
+
+-- Demonstrates JOIN operation
+SELECT e.name, e.department, d.location
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+-- Demonstrates subquery
+SELECT name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Demonstrates the use of LIKE operator with wildcards
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+-- Demonstrates date and time functions (though less relevant without date/time columns)
+SELECT strftime('%Y', 'now');
+
+-- Demonstrates pragma statement (SQLite specific)
+PRAGMA table_info(employees);
+
+-- Demonstrates VACUUM command (SQLite specific, good for defragmentation and size changes)
+VACUUM;

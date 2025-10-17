@@ -1,0 +1,118 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (job_id) REFERENCES jobs(job_id),
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name TEXT NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER,
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id),
+    FOREIGN KEY (location_id) REFERENCES locations(location_id)
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT,
+    postal_code TEXT,
+    city TEXT NOT NULL,
+    state_province TEXT,
+    country_id TEXT
+);
+
+CREATE TABLE countries (
+    country_id TEXT PRIMARY KEY,
+    country_name TEXT,
+    region_id INTEGER
+);
+
+CREATE VIEW employee_details_view AS
+SELECT
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    e.email,
+    e.phone_number,
+    e.hire_date,
+    j.job_title,
+    e.salary,
+    e.commission_pct,
+    m.first_name AS manager_first_name,
+    m.last_name AS manager_last_name,
+    d.department_name,
+    l.city,
+    c.country_name
+FROM
+    employees e
+LEFT JOIN
+    jobs j ON e.job_id = j.job_id
+LEFT JOIN
+    employees m ON e.manager_id = m.employee_id
+LEFT JOIN
+    departments d ON e.department_id = d.department_id
+LEFT JOIN
+    locations l ON d.location_id = l.location_id
+LEFT JOIN
+    countries c ON l.country_id = c.country_id;
+
+CREATE TRIGGER check_salary_range
+BEFORE INSERT ON employees
+BEGIN
+    SELECT CASE
+        WHEN NEW.salary < (SELECT min_salary FROM jobs WHERE job_id = NEW.job_id) OR NEW.salary > (SELECT max_salary FROM jobs WHERE job_id = NEW.job_id)
+        THEN RAISE(FAIL, 'Salary is out of range for this job.')
+    END;
+END;
+
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('US', 'United States of America', 1);
+INSERT INTO locations (location_id, address, postal_code, city, state_province, country_id) VALUES (1000, '1297 Via Cola di Rie', '00989', 'Rome', NULL, 'IT');
+INSERT INTO departments (department_id, department_name, manager_id, location_id) VALUES (10, 'Administration', 200, 1000);
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES (1, 'Software Engineer', 60000, 120000);
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES (100, 'Steven', 'King', 'SKING', '2003-06-17', 1, 24000.00, 10);
+
+SELECT department_name FROM departments WHERE department_id = 10;
+SELECT first_name, last_name FROM employees WHERE salary > 70000 ORDER BY last_name;
+SELECT location_id, city FROM locations WHERE country_id = 'US';
+SELECT job_title, min_salary, max_salary FROM jobs ORDER BY min_salary DESC;
+
+SELECT employee_id, first_name, last_name, job_title FROM employee_details_view WHERE city = 'Rome';
+SELECT typeof(employee_id) from employees;
+PRAGMA table_info(employees);
+PRAGMA index_list(employees);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+SELECT name FROM sqlite_master WHERE type='index';
+
+-- Testing SQLite specific features.  Vacuum and pragma optimize will test database file manipulation
+VACUUM;
+PRAGMA optimize;
+
+-- Test recursive common table expressions
+WITH RECURSIVE
+  cnt(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x+1 FROM cnt
+    WHERE x<5
+  )
+SELECT x FROM cnt;

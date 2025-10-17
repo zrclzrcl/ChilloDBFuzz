@@ -1,0 +1,62 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    created_at DATETIME DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+    total REAL DEFAULT 0.0,
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+CREATE TABLE order_items (
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    PRIMARY KEY (order_id, product_id)
+);
+
+CREATE TABLE customers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE,
+  phone TEXT
+);
+
+INSERT INTO products (name, price, description) VALUES
+('Laptop', 1200.00, 'High-performance laptop'),
+('Mouse', 25.00, 'Wireless mouse'),
+('Keyboard', 75.00, 'Mechanical keyboard');
+
+INSERT INTO customers (name, email, phone) VALUES
+('Alice Smith', 'alice@example.com', '555-1234'),
+('Bob Johnson', 'bob@example.com', '555-5678');
+
+INSERT INTO orders (customer_id) VALUES (1);
+INSERT INTO orders (customer_id) VALUES (2);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 2, 25.00),
+(2, 3, 1, 75.00);
+
+UPDATE orders SET total = (SELECT SUM(price * quantity) FROM order_items WHERE order_id = 1) WHERE id = 1;
+UPDATE orders SET total = (SELECT SUM(price * quantity) FROM order_items WHERE order_id = 2) WHERE id = 2;
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 1500;
+SELECT name,price FROM products ORDER BY price DESC LIMIT 2;
+SELECT AVG(price) FROM products;
+
+SELECT o.id, c.name, o.order_date, o.total FROM orders o JOIN customers c ON o.customer_id = c.id;
+
+SELECT last_insert_rowid();
+
+SELECT typeof(created_at) FROM products LIMIT 1;

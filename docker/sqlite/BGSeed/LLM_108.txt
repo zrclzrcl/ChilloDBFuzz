@@ -1,0 +1,42 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE parent(
+  id INTEGER PRIMARY KEY,
+  name TEXT
+);
+CREATE TABLE child(
+  id INTEGER PRIMARY KEY,
+  parent_id INTEGER,
+  name TEXT,
+  FOREIGN KEY (parent_id) REFERENCES parent(id)
+);
+INSERT INTO parent (name) VALUES ('Parent1');
+INSERT INTO parent (name) VALUES ('Parent2');
+INSERT INTO child (parent_id, name) VALUES (1, 'Child1');
+INSERT INTO child (parent_id, name) VALUES (1, 'Child2');
+INSERT INTO child (parent_id, name) VALUES (2, 'Child3');
+CREATE VIEW parent_child AS
+SELECT p.name AS parent_name, c.name AS child_name
+FROM parent p JOIN child c ON p.id = c.parent_id;
+SELECT * FROM parent_child;
+CREATE TRIGGER delete_parent
+BEFORE DELETE ON parent
+BEGIN
+  DELETE FROM child WHERE parent_id = OLD.id;
+END;
+DELETE FROM parent WHERE id = 2;
+SELECT * FROM child;
+CREATE TABLE numbers (num INTEGER);
+INSERT INTO numbers VALUES (1);
+INSERT INTO numbers VALUES (2);
+INSERT INTO numbers VALUES (3);
+SELECT num, LAG(num, 1, 0) OVER (ORDER BY num) AS prev_num FROM numbers;
+CREATE TABLE json_data (data JSON);
+INSERT INTO json_data VALUES ('{"name": "John", "age": 30}');
+SELECT json_extract(data, '$.name') FROM json_data;
+SELECT json_object('name', 'Jane', 'age', 25);
+CREATE VIRTUAL TABLE vtab USING fts5(content);
+INSERT INTO vtab VALUES('This is a test');
+INSERT INTO vtab VALUES('Another test');
+SELECT * FROM vtab WHERE vtab MATCH 'test';
+SELECT last_insert_rowid();
+SELECT sqlite_version();

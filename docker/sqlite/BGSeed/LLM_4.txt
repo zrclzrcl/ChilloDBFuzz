@@ -1,0 +1,50 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price > 0),
+    description TEXT,
+    created_at DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+    product_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    UNIQUE (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, price, description) VALUES
+('Laptop', 1200.50, 'High-performance laptop'),
+('The Lord of the Rings', 25.00, 'Classic fantasy novel'),
+('T-Shirt', 15.99, 'Comfortable cotton t-shirt');
+
+INSERT INTO product_categories (product_id, category_id)
+SELECT (SELECT id FROM products WHERE name = 'Laptop'), (SELECT id FROM categories WHERE name = 'Electronics');
+
+INSERT INTO product_categories (product_id, category_id)
+SELECT (SELECT id FROM products WHERE name = 'The Lord of the Rings'), (SELECT id FROM categories WHERE name = 'Books');
+
+INSERT INTO product_categories (product_id, category_id)
+SELECT (SELECT id FROM products WHERE name = 'T-Shirt'), (SELECT id FROM categories WHERE name = 'Clothing');
+
+SELECT * FROM products WHERE price BETWEEN 10 AND 100 ORDER BY price DESC LIMIT 10;
+
+SELECT name, price, COALESCE(description, 'No description') AS description FROM products;
+
+SELECT category_id, COUNT(*) FROM product_categories GROUP BY category_id HAVING COUNT(*) > 0;
+
+SELECT hex(randomblob(4)); -- Generate a random hexadecimal string.  SQLite specific.
+
+SELECT last_insert_rowid(); -- Get last inserted id. SQLite specific.
+
+SELECT typeof(1), typeof('abc'), typeof(1.1), typeof(NULL), typeof(x'1234'); -- Check data types.
+
+PRAGMA table_info(products); -- SQLite specific: Get information about the 'products' table.

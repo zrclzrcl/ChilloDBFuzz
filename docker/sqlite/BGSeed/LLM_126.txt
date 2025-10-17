@@ -1,0 +1,32 @@
+CREATE TABLE Products (
+    ProductID INTEGER PRIMARY KEY AUTOINCREMENT,
+    ProductName TEXT NOT NULL,
+    SupplierID INTEGER,
+    Price REAL DEFAULT 0.0
+);
+
+CREATE INDEX idx_ProductName ON Products (ProductName);
+
+INSERT INTO Products (ProductName, SupplierID, Price) VALUES
+('Laptop', 1, 1200.50),
+('Mouse', 2, 15.99),
+('Keyboard', 2, 75.00);
+
+CREATE VIEW DiscountedProducts AS
+SELECT ProductID, ProductName, Price * 0.9 AS DiscountedPrice
+FROM Products
+WHERE Price > 100;
+
+PRAGMA table_info(Products);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='Products';
+
+ALTER TABLE Products ADD COLUMN Description TEXT;
+
+UPDATE Products SET Description = 'High performance laptop' WHERE ProductName = 'Laptop';
+
+SELECT * FROM Products WHERE Description LIKE '%laptop%';
+
+DELETE FROM Products WHERE ProductID = 3;
+
+SELECT last_insert_rowid();

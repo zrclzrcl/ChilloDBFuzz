@@ -1,0 +1,79 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    stock_quantity INTEGER DEFAULT 0
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount REAL,
+    status VARCHAR(20) DEFAULT 'pending',
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Insert some sample data
+INSERT INTO users (username, email, password) VALUES
+('testuser1', 'test1@example.com', 'password123'),
+('testuser2', 'test2@example.com', 'securepassword');
+
+INSERT INTO products (product_name, description, price, stock_quantity) VALUES
+('Awesome Gadget', 'A really cool gadget', 49.99, 100),
+('Another Product', 'A useful product', 19.99, 50);
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 49.99),
+(2, 39.98);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 49.99),
+(2, 2, 2, 19.99);
+
+-- Trigger to update updated_at timestamp on users table
+CREATE TRIGGER update_user_timestamp
+AFTER UPDATE ON users
+BEGIN
+    UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- View to retrieve order details
+CREATE VIEW order_details AS
+SELECT
+    o.order_id,
+    u.username,
+    p.product_name,
+    oi.quantity,
+    oi.price
+FROM orders o
+JOIN users u ON o.user_id = u.id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON oi.product_id = p.product_id;
+
+-- Add a column to existing table
+ALTER TABLE products ADD COLUMN image_url VARCHAR(255);
+
+-- Create a virtual table using FTS5 for full-text search
+CREATE VIRTUAL TABLE product_search USING fts5(product_name, description);
+INSERT INTO product_search(rowid, product_name, description) SELECT product_id, product_name, description FROM products;

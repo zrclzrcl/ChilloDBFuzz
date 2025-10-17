@@ -1,0 +1,32 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL
+);
+
+CREATE INDEX idx_department ON employees(department);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice Smith', 'Sales', 50000.00),
+('Bob Johnson', 'Marketing', 60000.00),
+('Charlie Brown', 'Sales', 55000.00),
+('David Lee', 'Engineering', 70000.00),
+('Eve Davis', 'Marketing', 62000.00);
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM employees WHERE salary BETWEEN 50000 AND 60000 ORDER BY salary DESC;
+
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department HAVING AVG(salary) > 55000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE id = (SELECT id FROM employees ORDER BY salary ASC LIMIT 1);
+
+SELECT * FROM sales_employees;
+
+PRAGMA table_info(employees);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';

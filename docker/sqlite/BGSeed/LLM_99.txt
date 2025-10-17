@@ -1,0 +1,81 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    category TEXT
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount REAL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE VIEW customer_order_summary AS
+SELECT
+    c.first_name,
+    c.last_name,
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.total_amount) AS total_spent
+FROM
+    customers c
+LEFT JOIN
+    orders o ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id;
+
+-- Add a virtual table using FTS5 for full-text search.  Specific to SQLite
+CREATE VIRTUAL TABLE product_search USING fts5(name, description, content='products', content_rowid='id');
+
+-- Insert some data into products to populate the FTS5 table
+INSERT INTO products (name, description, price, category) VALUES
+('Awesome T-Shirt', 'A really awesome t-shirt.  Guaranteed to make you awesome.', 19.99, 'Clothing'),
+('Another T-Shirt', 'A simple, plain t-shirt.', 9.99, 'Clothing'),
+('Super Widget', 'A widget for all your widgeting needs.', 29.99, 'Gadgets');
+
+-- Now populate the FTS5 table *after* the products table is populated
+INSERT INTO product_search(rowid, name, description) SELECT id, name, description FROM products;
+
+-- Trigger to keep product_search synchronized with products
+CREATE TRIGGER products_after_insert AFTER INSERT ON products BEGIN
+  INSERT INTO product_search(rowid, name, description) VALUES (new.id, new.name, new.description);
+END;
+
+CREATE TRIGGER products_after_update UPDATE OF name, description ON products BEGIN
+  UPDATE product_search SET name = new.name, description = new.description WHERE rowid = new.id;
+END;
+
+CREATE TRIGGER products_after_delete AFTER DELETE ON products BEGIN
+  DELETE FROM product_search WHERE rowid = old.id;
+END;
+
+SELECT * FROM customer_order_summary ORDER BY total_spent DESC LIMIT 10;
+
+SELECT docid, highlight(product_search, 0, '<b>', '</b>') AS name, highlight(product_search, 1, '<b>', '</b>') AS description FROM product_search WHERE product_search MATCH 'widget';
+
+SELECT json_object('customer_id', customer_id, 'first_name', first_name) FROM customers LIMIT 1; -- Example using the json1 extension
+
+SELECT date('now'); -- Date function
+
+SELECT COALESCE(email, 'No Email Provided') FROM customers; -- Example using COALESCE

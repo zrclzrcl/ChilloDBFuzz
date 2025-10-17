@@ -1,0 +1,84 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    phone_number TEXT,
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary REAL,
+    commission_pct REAL,
+    manager_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (job_id) REFERENCES jobs(job_id),
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name TEXT NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    job_title TEXT NOT NULL,
+    min_salary REAL,
+    max_salary REAL
+);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'Software Engineer', 60000, 120000),
+(2, 'Data Scientist', 70000, 130000),
+(3, 'Project Manager', 80000, 150000);
+
+INSERT INTO departments (department_id, department_name) VALUES
+(10, 'Development'),
+(20, 'Research'),
+(30, 'Marketing');
+
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+(100, 'John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 80000, 10),
+(101, 'Jane', 'Smith', 'jane.smith@example.com', '2022-02-20', 2, 90000, 20),
+(102, 'Peter', 'Jones', 'peter.jones@example.com', '2022-03-10', 3, 100000, 30);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.department_name,
+    j.job_title,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    jobs j ON e.job_id = j.job_id;
+
+CREATE TRIGGER update_salary
+BEFORE UPDATE OF salary ON employees
+BEGIN
+    SELECT
+        CASE
+            WHEN NEW.salary < (SELECT min_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+                RAISE(FAIL, 'Salary cannot be less than the minimum salary for the job.')
+            WHEN NEW.salary > (SELECT max_salary FROM jobs WHERE job_id = NEW.job_id) THEN
+                RAISE(FAIL, 'Salary cannot be greater than the maximum salary for the job.')
+        END;
+END;
+
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+
+CREATE TABLE blob_table (id INTEGER PRIMARY KEY, data BLOB);
+INSERT INTO blob_table (data) VALUES (randomblob(1024));
+
+ALTER TABLE employees ADD COLUMN bonus REAL DEFAULT 0.0;
+UPDATE employees SET bonus = salary * 0.1 WHERE department_id = 10;
+
+CREATE INDEX idx_employee_department ON employees (department_id);
+
+-- VACUUM; -- Remove commented-out line as it's a valid command

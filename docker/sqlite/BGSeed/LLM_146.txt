@@ -1,0 +1,63 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE parent(
+  id INTEGER PRIMARY KEY,
+  p1 TEXT,
+  p2 INTEGER
+);
+
+CREATE TABLE child(
+  id INTEGER PRIMARY KEY,
+  parent_id INTEGER,
+  c1 REAL,
+  FOREIGN KEY (parent_id) REFERENCES parent(id)
+);
+
+CREATE VIEW my_view AS SELECT p1, c1 FROM parent JOIN child ON parent.id = child.parent_id WHERE p2 > 5;
+
+CREATE TRIGGER update_parent AFTER UPDATE ON child
+BEGIN
+  UPDATE parent SET p2 = NEW.c1 WHERE id = NEW.parent_id;
+END;
+
+INSERT INTO parent(p1, p2) VALUES ('test', 10), ('another', 3);
+INSERT INTO child(parent_id, c1) VALUES (1, 2.5), (2, 7.8);
+
+SELECT * FROM my_view;
+
+UPDATE child SET c1 = 15.2 WHERE id = 1;
+
+SELECT * FROM parent;
+
+DELETE FROM parent WHERE id = 2;
+
+SELECT * FROM child;
+
+SELECT sql FROM sqlite_master WHERE type='table' OR type='view' OR type='trigger';
+
+-- Test with a WITHOUT ROWID table
+CREATE TABLE no_rowid (
+  a INTEGER,
+  b TEXT,
+  PRIMARY KEY (a,b)
+) WITHOUT ROWID;
+
+INSERT INTO no_rowid VALUES (1, 'one'), (2, 'two');
+SELECT * FROM no_rowid;
+
+-- Test a CHECK constraint
+CREATE TABLE check_table (
+  id INTEGER PRIMARY KEY,
+  value INTEGER CHECK (value > 0)
+);
+
+INSERT INTO check_table (value) VALUES (5);
+-- Try to insert an invalid value - this should be skipped without error in fuzz testing environment
+
+INSERT INTO check_table (value) VALUES (-1);
+SELECT * FROM check_table;
+
+-- Test an expression index
+
+CREATE INDEX expr_idx ON parent (LENGTH(p1));
+
+SELECT * FROM parent WHERE LENGTH(p1) > 4;

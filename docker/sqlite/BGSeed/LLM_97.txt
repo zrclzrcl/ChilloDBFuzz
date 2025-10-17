@@ -1,0 +1,58 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    age INTEGER,
+    salary REAL,
+    hire_date DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    location TEXT
+);
+
+CREATE TABLE projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    start_date DATE,
+    end_date DATE
+);
+
+CREATE TABLE employee_projects (
+    employee_id INTEGER,
+    project_id INTEGER,
+    FOREIGN KEY (employee_id) REFERENCES employees(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    PRIMARY KEY (employee_id, project_id)
+);
+
+INSERT INTO employees (name, age, salary) VALUES ('Alice', 30, 60000.0);
+INSERT INTO employees (name, age, salary) VALUES ('Bob', 25, 50000.0);
+INSERT INTO employees (name, age, salary) VALUES ('Charlie', 40, 80000.0);
+
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'New York');
+
+INSERT INTO projects (name, start_date, end_date) VALUES ('Project A', '2023-01-01', '2023-12-31');
+INSERT INTO projects (name, start_date, end_date) VALUES ('Project B', '2023-06-01', '2024-05-31');
+
+INSERT INTO employee_projects (employee_id, project_id) VALUES (1, 1);
+INSERT INTO employee_projects (employee_id, project_id) VALUES (2, 1);
+INSERT INTO employee_projects (employee_id, project_id) VALUES (3, 2);
+
+SELECT * FROM employees WHERE age BETWEEN 20 AND 35;
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+SELECT AVG(salary) AS average_salary FROM employees;
+SELECT COUNT(*) FROM employees WHERE hire_date < date('now', '-1 year');
+SELECT e.name, d.name AS department_name FROM employees e JOIN departments d ON e.id = d.id; -- Intentionally incorrect JOIN condition
+SELECT e.name, p.name AS project_name FROM employees e INNER JOIN employee_projects ep ON e.id = ep.employee_id INNER JOIN projects p ON ep.project_id = p.id;
+SELECT DISTINCT location FROM departments;
+SELECT strftime('%Y', hire_date) AS hire_year, COUNT(*) FROM employees GROUP BY hire_year;
+SELECT id from employees WHERE name LIKE '%a%';
+SELECT id from employees WHERE name GLOB '*a*'; -- GLOB Example
+SELECT changes() ; -- Example of using a sqlite-specific function
+SELECT last_insert_rowid(); -- Another sqlite-specific function
+PRAGMA table_info(employees); -- Using a pragma command
+SELECT CAST(salary AS INTEGER) from employees;
+SELECT COALESCE(age, 0) FROM employees;

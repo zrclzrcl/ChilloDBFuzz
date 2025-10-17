@@ -1,0 +1,47 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    salary REAL,
+    hire_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO employees (first_name, last_name, salary) VALUES
+('John', 'Doe', 50000.00),
+('Jane', 'Smith', 60000.00),
+('Robert', 'Jones', 70000.00);
+
+CREATE VIEW high_earners AS
+SELECT id, first_name, last_name, salary
+FROM employees
+WHERE salary > 55000.00;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT * FROM employees WHERE last_name LIKE 'J%';
+
+SELECT avg(salary) FROM employees;
+
+PRAGMA table_info(employees);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='employees';
+
+UPDATE employees SET salary = salary * 1.10 WHERE id = 1;
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT first_name, last_name FROM employees ORDER BY salary DESC LIMIT 2;
+
+SELECT id, first_name, last_name FROM high_earners;
+
+SELECT date(hire_date) AS hire_date_only FROM employees;
+
+SELECT typeof(salary) FROM employees LIMIT 1;
+
+SELECT last_insert_rowid();
+
+SELECT changes();
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2023-01-01' AND '2024-01-01';
+
+SELECT first_name || ' ' || last_name AS full_name FROM employees;

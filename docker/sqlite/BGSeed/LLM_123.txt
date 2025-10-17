@@ -1,0 +1,33 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 50000.00),
+('Bob', 'Marketing', 60000.00),
+('Charlie', 'Engineering', 75000.00);
+
+CREATE VIEW SalarySummary AS
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department;
+
+SELECT department, average_salary FROM SalarySummary WHERE average_salary > (SELECT AVG(salary) FROM employees);
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name TEXT UNIQUE NOT NULL,
+    price REAL CHECK (price > 0)
+);
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00);
+
+SELECT product_name FROM products WHERE product_id IN (SELECT product_id FROM products ORDER BY price DESC LIMIT 1);
+
+SELECT last_insert_rowid();

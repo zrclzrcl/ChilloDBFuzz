@@ -1,0 +1,62 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.50),
+('Mouse', 'Ergonomic wireless mouse', 25.99),
+('Keyboard', 'Mechanical keyboard with RGB lighting', 89.99);
+
+CREATE INDEX idx_products_name ON products (name);
+
+CREATE VIEW discounted_products AS
+SELECT id, name, price, price * 0.9 AS discounted_price
+FROM products
+WHERE price > 100;
+
+CREATE TRIGGER update_products_trigger
+AFTER UPDATE ON products
+BEGIN
+    UPDATE products SET created_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE product_categories (
+    product_id INTEGER,
+    category_id INTEGER,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Accessories');
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 2);
+
+CREATE VIRTUAL TABLE product_search USING fts5(name, description, content='products');
+
+INSERT INTO product_search (rowid, name, description)
+SELECT id, name, description FROM products;
+
+CREATE TRIGGER products_insert AFTER INSERT ON products BEGIN
+  INSERT INTO product_search (rowid, name, description) VALUES (new.id, new.name, new.description);
+END;
+CREATE TRIGGER products_delete AFTER DELETE ON products BEGIN
+  INSERT INTO product_search (rowid, name, description) VALUES (old.id, old.name, old.description);
+END;
+CREATE TRIGGER products_update AFTER UPDATE ON products BEGIN
+  INSERT INTO product_search (rowid, name, description) VALUES (new.id, new.name, new.description);
+END;

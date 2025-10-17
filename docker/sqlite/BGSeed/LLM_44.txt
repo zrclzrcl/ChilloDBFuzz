@@ -1,0 +1,84 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL CHECK(salary > 0)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice Smith', 'Sales', 50000.00),
+('Bob Johnson', 'Marketing', 60000.00),
+('Charlie Brown', 'Sales', 55000.00),
+('David Lee', 'Engineering', 70000.00);
+
+CREATE VIEW high_earners AS
+SELECT name, department, salary
+FROM employees
+WHERE salary > 55000;
+
+CREATE TABLE audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER employee_audit_insert
+AFTER INSERT ON employees
+BEGIN
+    INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'INSERT');
+END;
+
+CREATE TRIGGER employee_audit_update
+AFTER UPDATE ON employees
+BEGIN
+    INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'UPDATE');
+END;
+
+CREATE TRIGGER employee_audit_delete
+AFTER DELETE ON employees
+BEGIN
+    INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'DELETE');
+END;
+
+UPDATE employees SET salary = 75000 WHERE name = 'David Lee';
+DELETE FROM employees WHERE name = 'Alice Smith';
+
+SELECT * FROM high_earners;
+SELECT * FROM audit_log;
+
+-- Demonstrate window functions
+SELECT
+    name,
+    department,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Demonstrate common table expression (CTE)
+WITH DepartmentAvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT
+    e.name,
+    e.department,
+    e.salary,
+    das.avg_salary
+FROM employees e
+JOIN DepartmentAvgSalaries das ON e.department = das.department
+WHERE e.salary > das.avg_salary;
+
+-- Demonstrating pragma usage for performance. Wal is commonly used.
+PRAGMA journal_mode=WAL;
+
+-- Demonstrating the usage of json functions
+CREATE TABLE json_data (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (data) VALUES ('{"name": "John Doe", "age": 30, "city": "New York"}');
+
+SELECT json_extract(data, '$.name') AS name FROM json_data;

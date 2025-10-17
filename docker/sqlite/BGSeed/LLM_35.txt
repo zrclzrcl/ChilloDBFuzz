@@ -1,0 +1,52 @@
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT NOT NULL,
+  age INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT,
+  published BOOLEAN DEFAULT 0,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+
+INSERT INTO users (username, email, age) VALUES
+('john_doe', 'john.doe@example.com', 30),
+('jane_doe', 'jane.doe@example.com', 25);
+
+INSERT INTO posts (user_id, title, content, published) VALUES
+(1, 'SQLite Fuzzing', 'This is a test post about fuzzing SQLite.', 1),
+(2, 'Another Post', 'Content of another post.', 0);
+
+CREATE VIEW active_users AS
+SELECT id, username, email FROM users WHERE age > 20;
+
+SELECT COUNT(*) FROM posts WHERE published = 1;
+
+PRAGMA table_info(users);
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='users';
+
+SELECT * FROM users WHERE username LIKE 'j%';
+
+SELECT AVG(age) FROM users;
+
+-- Trigger example (SQLite specific)
+CREATE TRIGGER check_age BEFORE INSERT ON users
+BEGIN
+  SELECT CASE
+    WHEN NEW.age < 0 THEN
+      RAISE (ABORT,'Age cannot be negative')
+  END;
+END;
+
+INSERT INTO users (username, email, age) VALUES ('baby', 'baby@example.com', -1); -- Should trigger the error
+
+SELECT last_insert_rowid();

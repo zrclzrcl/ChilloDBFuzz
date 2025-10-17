@@ -1,0 +1,53 @@
+-- Initial seed for SQLite fuzz testing, focusing on edge cases and unique features.
+  PRAGMA foreign_keys = ON; -- Enable foreign key constraints.
+
+  CREATE TABLE parents (
+    id INTEGER PRIMARY KEY,
+    name TEXT
+  );
+
+  CREATE TABLE children (
+    id INTEGER PRIMARY KEY,
+    parent_id INTEGER,
+    name TEXT,
+    FOREIGN KEY (parent_id) REFERENCES parents(id)
+      ON DELETE CASCADE -- Demonstrate ON DELETE CASCADE.
+      ON UPDATE SET NULL  -- Demonstrate ON UPDATE SET NULL.
+  );
+
+
+  INSERT INTO parents (name) VALUES ('Alice');
+  INSERT INTO parents (name) VALUES ('Bob');
+
+  INSERT INTO children (parent_id, name) VALUES (1, 'Charlie');
+  INSERT INTO children (parent_id, name) VALUES (2, 'David');
+  INSERT INTO children (parent_id, name) VALUES (NULL, 'Eve'); -- Null foreign key.
+
+
+  UPDATE parents SET id = 3 WHERE name = 'Bob'; -- Violates foreign key constraint if foreign_keys = OFF, but allowed when ON with UPDATE SET NULL
+
+  CREATE TRIGGER check_age BEFORE INSERT ON children
+  BEGIN
+    SELECT CASE
+      WHEN NEW.id < 0 THEN
+        RAISE (ABORT, 'Age must be non-negative')
+    END;
+  END;
+
+  INSERT INTO children (id, parent_id, name) VALUES (-1, 1, 'Bad Data'); -- Should fail due to trigger.
+
+  -- Use of WITHOUT ROWID table
+  CREATE TABLE no_rowid_table (
+    col1 INTEGER,
+    col2 TEXT,
+    PRIMARY KEY (col1, col2)
+  ) WITHOUT ROWID;
+
+  INSERT INTO no_rowid_table (col1, col2) VALUES (1, 'abc');
+
+  -- Testing virtual table using FTS5
+  CREATE VIRTUAL TABLE documents USING fts5(content);
+  INSERT INTO documents(content) VALUES('SQLite is a great database.');
+  INSERT INTO documents(content) VALUES('Fuzzing SQLite is important.');
+
+  SELECT * FROM documents WHERE documents MATCH 'SQLite';

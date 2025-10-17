@@ -1,0 +1,56 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary REAL,
+    department_id INTEGER,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', '2021-05-20', 75000.00, 2),
+('Peter', 'Jones', '2023-03-10', 90000.00, 3),
+('Alice', 'Brown', '2022-09-01', 65000.00, 1),
+('Bob', 'Davis', '2020-11-05', 80000.00, 2);
+
+CREATE VIEW employee_summary AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.name AS department_name
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id;
+
+SELECT * FROM employee_summary WHERE department_name = 'Sales';
+
+-- SQLite specific: Using the `date` function to filter by year
+SELECT * FROM employees WHERE strftime('%Y', hire_date) = '2022';
+
+-- SQLite specific: Using the `LIKE` operator for pattern matching
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+
+-- Using the `CASE` expression
+SELECT first_name, last_name,
+       CASE
+           WHEN salary > 70000 THEN 'High Salary'
+           ELSE 'Low Salary'
+       END AS salary_level
+FROM employees;
+
+-- Test for NULL values and coalesce
+SELECT first_name, last_name, COALESCE(CAST(department_id AS TEXT), 'No Department') AS dept FROM employees;

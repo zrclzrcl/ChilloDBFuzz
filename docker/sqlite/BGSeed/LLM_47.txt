@@ -1,0 +1,51 @@
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  price REAL NOT NULL CHECK (price > 0),
+  category TEXT DEFAULT 'Uncategorized'
+);
+
+INSERT INTO products (name, description, price, category) VALUES
+('Awesome Widget', 'A really cool widget.', 19.99, 'Widgets'),
+('Deluxe Widget', 'An even cooler widget.', 29.99, 'Widgets'),
+('Super Gadget', 'The ultimate gadget.', 99.99, 'Gadgets'),
+('Basic Thing', 'A simple thing.', 5.00, NULL);
+
+CREATE INDEX idx_products_name ON products (name);
+
+SELECT * FROM products WHERE price BETWEEN 10 AND 50;
+
+SELECT category, AVG(price) AS average_price FROM products GROUP BY category ORDER BY average_price DESC;
+
+SELECT name, LENGTH(description) AS description_length FROM products ORDER BY description_length DESC LIMIT 1;
+
+-- Demonstrating SQLite's support for WITHOUT ROWID tables (useful for optimizing certain queries)
+CREATE TABLE product_attributes (
+    product_id INTEGER NOT NULL,
+    attribute_name TEXT NOT NULL,
+    attribute_value TEXT,
+    PRIMARY KEY (product_id, attribute_name),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+) WITHOUT ROWID;
+
+INSERT INTO product_attributes (product_id, attribute_name, attribute_value) VALUES
+(1, 'color', 'red'),
+(1, 'size', 'medium'),
+(2, 'color', 'blue'),
+(3, 'material', 'titanium');
+
+SELECT p.name, pa.attribute_name, pa.attribute_value
+FROM products p
+JOIN product_attributes pa ON p.id = pa.product_id
+WHERE pa.attribute_name = 'color';
+
+-- Testing collation sequences and LIKE operator
+SELECT name FROM products WHERE name LIKE 'A%' COLLATE NOCASE;
+
+-- Test case insensitivity and unicode
+CREATE TABLE t1(a TEXT);
+INSERT INTO t1 VALUES('你好');
+INSERT INTO t1 VALUES('你好 world');
+SELECT * FROM t1 WHERE a = '你好';
+SELECT * FROM t1 WHERE a LIKE '你好%';

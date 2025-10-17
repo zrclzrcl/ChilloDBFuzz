@@ -1,0 +1,36 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL CHECK (price > 0),
+    quantity INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_products_name ON products (name);
+
+INSERT INTO products (name, description, price, quantity) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 10),
+('Mouse', 'Wireless mouse', 25.00, 50),
+('Keyboard', 'Mechanical keyboard', 75.00, 30);
+
+CREATE VIEW product_summary AS
+SELECT name, price, quantity, price * quantity AS total_value
+FROM products;
+
+SELECT * FROM product_summary WHERE total_value > 500;
+
+UPDATE products SET price = price * 1.1 WHERE quantity < 20;
+
+DELETE FROM products WHERE id = (SELECT id FROM products ORDER BY price DESC LIMIT 1);
+
+SELECT typeof(id), typeof(name), typeof(price), typeof(quantity) FROM products LIMIT 1;
+
+SELECT sql FROM sqlite_master WHERE type='table' AND name='products';
+
+PRAGMA table_info(products);
+
+SELECT json_object('id', id, 'name', name, 'price', price) FROM products;
+
+SELECT name, description FROM products WHERE description LIKE '%performance%';
+
+SELECT avg(price), sum(quantity) FROM products;

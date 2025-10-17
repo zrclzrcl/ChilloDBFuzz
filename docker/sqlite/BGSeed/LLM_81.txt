@@ -1,0 +1,59 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (job_id) REFERENCES jobs(job_id),
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+DROP TABLE IF EXISTS departments;
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    department_name VARCHAR(100) NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER,
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+DROP TABLE IF EXISTS jobs;
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_title VARCHAR(100) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES
+('Software Engineer', 60000, 120000),
+('Data Scientist', 70000, 130000),
+('Project Manager', 80000, 150000);
+
+INSERT INTO departments (department_name, manager_id, location_id) VALUES
+('Engineering', NULL, 1),
+('Data Science', NULL, 2),
+('Management', NULL, 3);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 80000, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-02-20', 2, 90000, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2022-03-10', 3, 100000, 3);
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+SELECT avg(salary) FROM employees WHERE department_id = 2;
+
+SELECT first_name, last_name FROM employees ORDER BY salary DESC LIMIT 1;
+
+SELECT department_name FROM departments WHERE department_id IN (SELECT department_id FROM employees GROUP BY department_id HAVING COUNT(*) > 1);
+
+PRAGMA integrity_check;
