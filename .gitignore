@@ -1,6 +1,6 @@
 .venv/
 .idea/
-config.yaml
+code/config.yaml
 main.py
 __pycache__/
 output/

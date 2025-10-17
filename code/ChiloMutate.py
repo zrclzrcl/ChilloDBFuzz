@@ -22,8 +22,8 @@ def init(seed):
     chilo_factory.main_logger.info("Chilo工厂初始化成功！")
     chilo_factory.main_logger.info("Chilo工厂准备启动3个子线程")
     #还要启动三个线程
-    parser = threading.Thread(target=LLMParser.chilo_parser,args=(chilo_factory,))
-    mutator_generator = threading.Thread(target=LLMMutatorGenerater.chilo_mutator_generator,args=(chilo_factory,))
+    parser = threading.Thread(target=LLMParser.chilo_parser, args=(chilo_factory,))
+    mutator_generator = threading.Thread(target=LLMMutatorGenerater.chilo_mutator_generator, args=(chilo_factory,))
     structural_mutator = threading.Thread(target=LLMStructuralMutator.structural_mutator, args=(chilo_factory,))
     mutator_fixer_t = threading.Thread(target=mutator_fixer.fix_mutator, args=(chilo_factory,))
     chilo_factory.main_logger.info("Chilo工厂启动解析器中~")

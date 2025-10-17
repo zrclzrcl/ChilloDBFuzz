@@ -5,7 +5,7 @@ import traceback
 from typing import List
 
 from . import chilo_factory
-from ChiloMutatorFactory.ChiloMutator import ChiloMutator
+from code.ChiloMutatorFactory.ChiloMutator import ChiloMutator
 
 
 def get_fix_syntax_prompt(err_code, err_msg):

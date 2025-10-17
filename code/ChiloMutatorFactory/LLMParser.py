@@ -5,7 +5,7 @@
 import os
 import time
 
-from ChiloMutatorFactory.chilo_factory import ChiloFactory
+from code.ChiloMutatorFactory.chilo_factory import ChiloFactory
 
 def _get_constant_prompt(ori_sql, target_dbms, dbms_version):
     prompt = f"""

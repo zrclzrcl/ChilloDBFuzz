@@ -3,7 +3,7 @@
 生成对应的变异器
 """
 import time
-from ChiloMutatorFactory.chilo_factory import ChiloFactory
+from code.ChiloMutatorFactory.chilo_factory import ChiloFactory
 
 
 def  _get_constant_mutator_prompt(parsed_sql:str, target_dbms, dbms_version):
