@@ -7,9 +7,11 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get -y install \
     make cmake build-essential sudo git \
     tcl8.6 tcl8.6-tdbc-sqlite3 \
-    clang-16 llvm-16 lld ninja-build pkg-config \
+    clang-15 llvm-15 lld ninja-build pkg-config \
     libpq-dev libyaml-cpp-dev wget bzip2 ca-certificates python3-dev\
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+
 
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
     bash /tmp/miniconda.sh -b -p /opt/conda && \
@@ -33,10 +35,12 @@ WORKDIR /home
 
 RUN git clone https://github.com/zrclzrcl/ChilloDBFuzz.git && \
     cd ChilloDBFuzz && git submodule update --init && \
-    cd AFLplusplus && LLVM_CONFIG=llvm-config-16 make -j$(nproc)
+    cd AFLplusplus && LLVM_CONFIG=llvm-config-15 make -j$(nproc)
 
 
 # 搞定python环境
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 RUN cd ./ChilloDBFuzz/code/ && conda env create -f ./environment.yaml && conda clean -afy
 ENV CONDA_DEFAULT_ENV=ChilloDBFuzz
 ENV PATH=/opt/conda/envs/ChilloDBFuzz/bin:$PATH
