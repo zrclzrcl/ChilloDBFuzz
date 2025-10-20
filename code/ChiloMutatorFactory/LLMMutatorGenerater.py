@@ -3,7 +3,7 @@
 生成对应的变异器
 """
 import time
-from code.ChiloMutatorFactory.chilo_factory import ChiloFactory
+from .chilo_factory import ChiloFactory
 
 
 def  _get_constant_mutator_prompt(parsed_sql:str, target_dbms, dbms_version):
@@ -80,21 +80,21 @@ def chilo_mutator_generator(my_chilo_factory: ChiloFactory):
         llm_error_count = 0
         my_chilo_factory.mutator_generator_logger.info("接收变异器生成任务中~")
         generate_target = my_chilo_factory.wait_mutator_generate_list.get()    #拿一个需要生成变异器的
-        my_chilo_factory.mutator_generator_logger.info(f"变异器生成任务接收完毕 任务目标   seed_id：{generate_target["seed_id"]}    变异次数：{generate_target['mutate_time']}")
-        mutate_time = generate_target["mutate_time"]
-        parsed_sql = my_chilo_factory.all_seed_list.seed_list[generate_target["seed_id"]].parser_content   #拿出对应的已经解析过的内容
+        my_chilo_factory.mutator_generator_logger.info(f"变异器生成任务接收完毕 任务目标   seed_id：{generate_target['seed_id']}    变异次数：{generate_target['mutate_time']}")
+        mutate_time = generate_target['mutate_time']
+        parsed_sql = my_chilo_factory.all_seed_list.seed_list[generate_target['seed_id']].parser_content   #拿出对应的已经解析过的内容
         prompt = _get_constant_mutator_prompt(parsed_sql, my_chilo_factory.target_dbms, my_chilo_factory.target_dbms_version)  #构建提示词
         while True:
             start_time = time.time()
             my_chilo_factory.mutator_generator_logger.info(
-                f"seed_id：{generate_target["seed_id"]}  准备调用LLM，生成变异器")
+                f"seed_id：{generate_target['seed_id']}  准备调用LLM，生成变异器")
             mutator_code, up_token, down_token = my_chilo_factory.llm_tool_box.chat_llm(prompt)    #调用LLM
             end_time = time.time()
             all_up_token += up_token
             all_down_token += down_token
             llm_count += 1
             my_chilo_factory.mutator_generator_logger.info(
-                f"seed_id：{generate_target["seed_id"]}  生成变异器调用结束，用时：{end_time - start_time:.2f}s")
+                f"seed_id：{generate_target['seed_id']}  生成变异器调用结束，用时：{end_time - start_time:.2f}s")
             mutator_code = my_chilo_factory.llm_tool_box.get_python_block_content(mutator_code)  #获取python代码
             try:
                 mutator_code = mutator_code[0]
@@ -103,15 +103,15 @@ def chilo_mutator_generator(my_chilo_factory: ChiloFactory):
                 #证明输出格式错误
                 llm_error_count += 1
                 my_chilo_factory.mutator_generator_logger.info(
-                    f"seed_id：{generate_target["seed_id"]}  LLM生成变异器时格式错误！准备再次生成")
+                    f"seed_id：{generate_target['seed_id']}  LLM生成变异器时格式错误！准备再次生成")
 
         my_chilo_factory.mutator_generator_logger.info(
-            f"seed_id：{generate_target["seed_id"]}  LLM生成变异器代码提取成功，准备放入待修复队列")
-        my_chilo_factory.fix_mutator_list.put({"seed_id" : generate_target["seed_id"], "mutate_time" : mutate_time, "mutator_code": mutator_code})
+            f"seed_id：{generate_target['seed_id']}  LLM生成变异器代码提取成功，准备放入待修复队列")
+        my_chilo_factory.fix_mutator_list.put({"seed_id" : generate_target['seed_id'], "mutate_time" : mutate_time, "mutator_code": mutator_code})
         my_chilo_factory.mutator_generator_logger.info(
-            f"seed_id：{generate_target["seed_id"]}  变异器放入修复队列成功")
+            f"seed_id：{generate_target['seed_id']}  变异器放入修复队列成功")
         my_chilo_factory.mutator_generator_logger.info("-"*10)
         all_end_time = time.time()
-        my_chilo_factory.write_mutator_generator_csv(all_end_time, generate_target["seed_id"], all_end_time-all_start_time,
+        my_chilo_factory.write_mutator_generator_csv(all_end_time, generate_target['seed_id'], all_end_time-all_start_time,
                                                      end_time-start_time, all_up_token, all_down_token, llm_count,
                                                      llm_error_count, my_chilo_factory.fix_mutator_list.qsize())

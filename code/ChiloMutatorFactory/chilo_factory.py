@@ -31,34 +31,34 @@ class ChiloFactory:
         with open(self.config_file_path, "r", encoding="utf-8") as f:   #读配置文件
             config = yaml.safe_load(f)
 
-        self.main_log_path = config["LOG"]["MAIN_LOG_PATH"]   #主日志
-        self.parser_log_path = config["LOG"]["PARSER_LOG_PATH"]   #解析器日志
-        self.mutator_generator_log_path = config["LOG"]["MUTATOR_GENERATOR_LOG_PATH"] #变异器生成器日志
-        self.structural_mutator_log_path = config["LOG"]["STRUCTURAL_MUTATOR_LOG_PATH"]   #结构化变异器日志
-        self.mutator_fixer_log_path = config["LOG"]["MUTATOR_FIXER_LOG_PATH"]
-        self.llm_log_path = config["LOG"]["LLM_LOG_PATH"]
+        self.main_log_path = config['LOG']['MAIN_LOG_PATH']   #主日志
+        self.parser_log_path = config['LOG']['PARSER_LOG_PATH']   #解析器日志
+        self.mutator_generator_log_path = config['LOG']['MUTATOR_GENERATOR_LOG_PATH'] #变异器生成器日志
+        self.structural_mutator_log_path = config['LOG']['STRUCTURAL_MUTATOR_LOG_PATH']   #结构化变异器日志
+        self.mutator_fixer_log_path = config['LOG']['MUTATOR_FIXER_LOG_PATH']
+        self.llm_log_path = config['LOG']['LLM_LOG_PATH']
 
-        self.target_dbms = config["TARGET"]["DBMS"]     #目标DBMS
-        self.target_dbms_version = config["TARGET"]["DBMS_VERSION"] #目标版本
+        self.target_dbms = config['TARGET']['DBMS']     #目标DBMS
+        self.target_dbms_version = config['TARGET']['DBMS_VERSION'] #目标版本
         self.wait_parse_list = queue.Queue()   #等待SQL解析的队列
         self.wait_mutator_generate_list = queue.Queue()    #等待变异器生成的队列
         self.wait_exec_mutator_list = queue.Queue() #等待执行的队列
         self.structural_mutator_list = queue.Queue()    #等待结构性变异的队列
         self.fix_mutator_list = queue.Queue()
-        self.parsed_sql_path = config["FILE_PATH"]["PARSED_SQL_PATH"]
-        self.generated_mutator_path = config["FILE_PATH"]["GENERATED_MUTATOR_PATH"]
-        self.structural_mutator_path = config["FILE_PATH"]["STRUCTURAL_MUTATE_PATH"]   #结构化变异的文件路径
-        self.mutator_fix_tmp_path = config["FILE_PATH"]["MUTATOR_FIX_TMP_PATH"]
+        self.parsed_sql_path = config['FILE_PATH']['PARSED_SQL_PATH']
+        self.generated_mutator_path = config['FILE_PATH']['GENERATED_MUTATOR_PATH']
+        self.structural_mutator_path = config['FILE_PATH']['STRUCTURAL_MUTATE_PATH']   #结构化变异的文件路径
+        self.mutator_fix_tmp_path = config['FILE_PATH']['MUTATOR_FIX_TMP_PATH']
         self.mutator_pool = ChiloMutator.ChiloMutatorPool(self.generated_mutator_path)  #一个变异器池
         self.all_seed_list = seed.AFLSeedList() #收到的所有seed的列表
-        self.fix_mutator_try_time = config["OTHERS"]["FIX_MUTATOR_TRY_TIME"]
+        self.fix_mutator_try_time = config['OTHERS']['FIX_MUTATOR_TRY_TIME']
 
         #下面是CSV文件
-        self.mutator_fixer_csv_path = config["CSV"]["MUTATOR_FIXER_CSV_PATH"]
-        self.structural_mutator_csv_path = config["CSV"]["STRUCTURAL_MUTATOR_CSV_PATH"]
-        self.parser_csv_path = config["CSV"]["PARSER_CSV_PATH"]
-        self.main_csv_path = config["CSV"]["MAIN_CSV_PATH"]
-        self.mutator_generator_csv_path = config["CSV"]["MUTATOR_GENERATOR_CSV_PATH"]
+        self.mutator_fixer_csv_path = config['CSV']['MUTATOR_FIXER_CSV_PATH']
+        self.structural_mutator_csv_path = config['CSV']['STRUCTURAL_MUTATOR_CSV_PATH']
+        self.parser_csv_path = config['CSV']['PARSER_CSV_PATH']
+        self.main_csv_path = config['CSV']['MAIN_CSV_PATH']
+        self.mutator_generator_csv_path = config['CSV']['MUTATOR_GENERATOR_CSV_PATH']
 
         self.init_file_path()  # 初始化所有文件路径
 
@@ -69,8 +69,8 @@ class ChiloFactory:
         self.mutator_fixer_logger = logger.setup_thread_logger("MutatorFixer", self.mutator_fixer_log_path)
         self.llm_logger = logger.setup_thread_logger("LLM", self.llm_log_path)
 
-        self.llm_tool_box = llm_tool.LLMTool(config["LLM"]["API_KEY"], config["LLM"]["MODEL"],
-                                             config["LLM"]["BASE_URL"], self.llm_logger)  # LLM工具
+        self.llm_tool_box = llm_tool.LLMTool(config['LLM']['API_KEY'], config['LLM']['MODEL'],
+                                             config['LLM']['BASE_URL'], self.llm_logger)  # LLM工具
 
 
     def init_file_path(self):
