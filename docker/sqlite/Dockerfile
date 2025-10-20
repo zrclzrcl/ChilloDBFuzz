@@ -1,4 +1,4 @@
-from ubuntu:22.04
+FROM ubuntu:22.04
 LABEL maintainer="ZRCL"
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get -y install \
     make cmake build-essential sudo git \
     tcl8.6 tcl8.6-tdbc-sqlite3 \
     clang-15 llvm-15 lld ninja-build pkg-config \
-    libpq-dev libyaml-cpp-dev wget bzip2 ca-certificates python3-dev\
+    libpq-dev libyaml-cpp-dev wget bzip2 ca-certificates\
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
@@ -33,19 +33,20 @@ RUN chmod +w /etc/sudoers && \
 USER chilo
 WORKDIR /home
 
-RUN git clone https://github.com/zrclzrcl/ChilloDBFuzz.git && \
-    cd ChilloDBFuzz && git submodule update --init && \
-    cd AFLplusplus && LLVM_CONFIG=llvm-config-15 make -j$(nproc)
-
-
 # 搞定python环境
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-RUN cd ./ChilloDBFuzz/code/ && conda env create -f ./environment.yaml && conda clean -afy
-ENV CONDA_DEFAULT_ENV=ChilloDBFuzz
-ENV PATH=/opt/conda/envs/ChilloDBFuzz/bin:$PATH
+RUN cd ./ChiloDBFuzz/code/ && conda env create -f ./environment.yaml && conda clean -afy
+# 设置默认环境
+ENV CONDA_DEFAULT_ENV=ChiloDBFuzz
+ENV PATH=/opt/conda/envs/ChiloDBFuzz/bin:$PATH
 SHELL ["bash", "-c"]
-RUN echo "conda activate myenv" >> ~/.bashrc
+RUN echo "conda activate ChiloDBFuzz" >> ~/.bashrc
+
+#搞定AFL++
+RUN git clone https://github.com/zrclzrcl/ChiloDBFuzz.git && \
+    cd ChiloDBFuzz && git submodule update --init && \
+    cd AFLplusplus && LLVM_CONFIG=llvm-config-15 make -j$(nproc)
 
 # 构建sqlite
 ARG CFLAGS="-DSQLITE_MAX_LENGTH=128000000 -DSQLITE_MAX_SQL_LENGTH=128000000 -DSQLITE_MAX_MEMORY=25000000 -DSQLITE_PRINTF_PRECISION_LIMIT=1048576 -DSQLITE_DEBUG=1 -DSQLITE_MAX_PAGE_COUNT=16384"
