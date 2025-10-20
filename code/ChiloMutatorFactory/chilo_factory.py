@@ -391,7 +391,7 @@ class ChiloFactory:
         self.all_seed_list.seed_list[mutator.seed_id].mutate_time += 1
         self.main_logger.info(
             f"调用变异完成，为该种子的第{self.all_seed_list.seed_list[mutator.seed_id].mutate_time}次变异 变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
-        return mutate_testcase.encode("utf-8"), is_by_random, mutator.seed_id, mutator.mutator_id
+        return bytearray(mutate_testcase, "utf-8"), is_by_random, mutator.seed_id, mutator.mutator_id
 
 
 

@@ -5,7 +5,7 @@ import traceback
 from typing import List
 
 from . import chilo_factory
-from code.ChiloMutatorFactory.ChiloMutator import ChiloMutator
+from .ChiloMutator import ChiloMutator
 
 
 def get_fix_syntax_prompt(err_code, err_msg):
@@ -31,6 +31,7 @@ Erroneous code:
     return prompt
 
 def get_fix_semantics_prompt(masked_sql, err_code, err_msg):
+    err_msg_str =  '\n'.join(err_msg)
     prompt = f"""
 You are a DBMS fuzzing expert and a Python code repair specialist.
 Your task is to fix the following Python code used for mutating SQL statements, **without rewriting its overall logic structure**.
@@ -72,7 +73,7 @@ Original code:
 {err_code}
 
 Detected semantic issues:
-{"\\n".join(err_msg)}
+{err_msg_str}
 ---
 ### Output Requirements
 When providing the repaired code, **place the entire fixed program inside the following code block**:

@@ -8,7 +8,7 @@ RUN apt-get update && apt-get -y install \
     tcl8.6 tcl8.6-tdbc-sqlite3 \
     clang-15 llvm-15 lld ninja-build pkg-config \
     libpq-dev libyaml-cpp-dev wget bzip2 ca-certificates \
-    python3 python3-pip python3-dev \
+    python3 python3-pip python3-dev vim \
     && python3 -m pip install --upgrade pip \
     && python3 -m pip install \
         annotated-types==0.7.0 \
