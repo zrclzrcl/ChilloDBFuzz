@@ -5,3 +5,5 @@ main.py
 __pycache__/
 output/
 .vscode
+ChiloDisco/frontend/node_modules/
+ChiloDisco/frontend/package-lock.json
