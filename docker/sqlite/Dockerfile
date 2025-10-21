@@ -8,9 +8,11 @@ RUN apt-get update && apt-get -y install \
     tcl8.6 tcl8.6-tdbc-sqlite3 \
     clang-15 llvm-15 lld ninja-build pkg-config \
     libpq-dev libyaml-cpp-dev wget bzip2 ca-certificates \
-    python3 python3-pip python3-dev vim \
+    python3 python3-pip python3-dev vim curl gnupg\
     && python3 -m pip install --upgrade pip \
-    && python3 -m pip install \
+    && python3 -m pip install --no-cache-dir \
+        Flask==3.0.3 \
+        gunicorn==22.0.0 \
         annotated-types==0.7.0 \
         anyio==4.11.0 \
         certifi==2025.10.5 \
@@ -29,6 +31,8 @@ RUN apt-get update && apt-get -y install \
         tqdm==4.67.1 \
         typing-extensions==4.15.0 \
         typing-inspection==0.4.2 \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /home && \
@@ -68,5 +72,9 @@ RUN $CC $CFLAGS -I. -c \
 RUN $CXX $CXXFLAGS \
     /home/sqlite3/test/ossfuzz.o /home/sqlite3/test/ossshell.o -o /home/ossfuzz \
    ./sqlite3.o -ldl -pthread
+
+#搞定disco
+WORKDIR /home/ChiloDBFuzz/ChiloDisco/frontend
+RUN npm ci && npm run build
 
 WORKDIR /home/ChiloDBFuzz/code
