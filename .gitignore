@@ -4,3 +4,4 @@ code/config.yaml
 main.py
 __pycache__/
 output/
+.vscode
