@@ -185,20 +185,35 @@ def api_logs():
         exists = os.path.exists(path)
 
         # 为每一行附加首次看到的时间戳（没有行内时间戳时用于前端着色）
-        state = LOG_STATE.get(key)
-        prev_ts: List[str] = state.get('ts', []) if state else []
+        state = LOG_STATE.get(key) or {}
+        prev_ts: List[str] = state.get('ts', []) or []
+        prev_lines: List[str] = state.get('lines', []) or []
         prev_len = len(prev_ts)
         cur_len = len(lines)
-        if not state:
+
+        if cur_len == 0:
+            ts_list: List[str] = []
+        elif prev_len == 0 or not prev_lines:
+            # 首次或没有历史，全部视为新
             ts_list = [now_iso] * cur_len
         else:
-            if cur_len >= prev_len and prev_len > 0:
-                carry = min(prev_len, cur_len)
-                ts_list = prev_ts[-carry:] + [now_iso] * (cur_len - carry)
+            # 尝试用“最长后缀重叠”对齐，解决滑窗且行数不变时新行误用旧时间的问题
+            max_check = min(prev_len, cur_len, 200)
+            k = 0  # 重叠长度
+            # 从大到小寻找 prev_lines 的后缀与当前 lines 的后缀重叠
+            for chk in range(max_check, 0, -1):
+                if prev_lines[-chk:] == lines[-chk:]:
+                    k = chk
+                    break
+            if k > 0:
+                # 继承重叠部分的时间戳，新增部分赋予 now
+                ts_list = prev_ts[-k:] + [now_iso] * (cur_len - k)
             else:
-                # 文件被截断或轮转，无法可靠对齐，全部视为新内容
+                # 无法可靠对齐（如截断/轮转/内容完全变化），全部视为新
                 ts_list = [now_iso] * cur_len
-        LOG_STATE[key] = {'ts': ts_list}
+
+        # 记录当前状态用于下一轮对齐
+        LOG_STATE[key] = {'ts': ts_list, 'lines': lines}
 
         # 组装带时间戳的行对象
         line_objs = [{'s': s, 't': ts_list[i]} for i, s in enumerate(lines)]

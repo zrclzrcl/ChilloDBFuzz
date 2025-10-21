@@ -1,7 +1,7 @@
 .venv/
 .idea/
 code/config.yaml
-main.py
+code/main.py
 __pycache__/
 output/
 .vscode
