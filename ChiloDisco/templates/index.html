@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChiloDisco · Log Liveboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+  <div id="app" class="layout">
+    <aside class="sidenav">
+      <div class="nav-brand">
+        <span class="logo">⚡</span>
+        <span class="title">ChiloDisco</span>
+      </div>
+      <nav class="nav-links">
+        <a class="active" href="/">日志面板</a>
+        <a href="/plot">Chilo Plot</a>
+        <a href="#">设置（预留）</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <header class="app-header">
+        <div class="brand">
+          <span class="subtitle">AFL++ Custom Mutator · Live Logs</span>
+        </div>
+        <div class="controls">
+          <label>刷新频率</label>
+          <select v-model.number="interval">
+            <option :value="200">0.2s</option>
+            <option :value="500">0.5s</option>
+            <option :value="1000">1s</option>
+            <option :value="2000">2s</option>
+            <option :value="5000">5s</option>
+            <option :value="10000">10s</option>
+          </select>
+          <label>每个Log最大行数</label>
+          <select v-model.number="maxLines">
+            <option :value="200">200</option>
+            <option :value="300">300</option>
+            <option :value="500">500</option>
+            <option :value="800">800</option>
+          </select>
+        </div>
+      </header>
+
+      <main class="grid">
+        {% raw %}
+        <section class="card" v-for="panel in panels" :key="panel.key" :style="{ '--h': panel.hue }">
+          <header class="card-header">
+            <div class="name">{{ panel.key }}</div>
+            <div class="file">{{ panel.filename }}</div>
+            <div class="meta">
+              <span class="mtime" title="最近修改时间">{{ panel.mtimeText }}</span>
+              <span class="size" title="文件大小">{{ panel.sizeText }}</span>
+              <span class="recency-dot" :title="'新鲜度：' + panel.bucketLabel" :style="{ color: panel.accent }"></span>
+            </div>
+          </header>
+          <pre class="log-body" ref="scrollers">
+            <code class="log-lines" v-html="panel.html"></code>
+          </pre>
+        </section>
+        {% endraw %}
+      </main>
+
+      <footer class="app-footer">
+        <div class="legend">
+          <span>新鲜度：</span>
+          <span class="legend-dot" style="--h:140">0–2秒</span>
+          <span class="legend-dot" style="--h:105">2–5秒</span>
+          <span class="legend-dot" style="--h:80">5–10秒</span>
+          <span class="legend-dot" style="--h:60">10–20秒</span>
+          <span class="legend-dot" style="--h:40">20–40秒</span>
+          <span class="legend-dot" style="--h:25">40–60秒</span>
+          <span class="legend-dot" style="--h:12">60–90秒</span>
+          <span class="legend-dot" style="--h:0">≥90秒</span>
+        </div>
+        <div class="copyright">© 2025 ChiloDisco</div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

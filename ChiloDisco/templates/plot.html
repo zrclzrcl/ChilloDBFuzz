@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChiloDisco · Chilo Plot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div id="app" class="layout">
+    <aside class="sidenav">
+      <div class="nav-brand">
+        <span class="logo">⚡</span>
+        <span class="title">ChiloDisco</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/">日志面板</a>
+        <a class="active" href="/plot">Chilo Plot</a>
+        <a href="#">设置（预留）</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <header class="app-header">
+        <div class="brand">
+          <span class="subtitle">AFL++ · 实时数据大屏</span>
+        </div>
+        <div class="controls" style="gap:12px">
+          <label>刷新频率</label>
+          <select id="intervalSel">
+            <option value="100" selected>0.1s</option>
+            <option value="200">0.2s</option>
+            <option value="500">0.5s</option>
+            <option value="1000">1s</option>
+            <option value="2000">2s</option>
+            <option value="5000">5s</option>
+          </select>
+          <span id="dataPath" style="color:var(--muted); font-size:12px"></span>
+        </div>
+      </header>
+
+      <main id="mainGrid" class="grid" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1.2fr 0.9fr 0.9fr 1fr; height: calc(100vh - 140px); min-height: 0;">
+        <!-- 第1行：折线图，横跨两列 -->
+        <section class="card" style="grid-column: 1 / span 2;">
+          <header class="card-header">
+            <div class="name">折线图 · 相对时间</div>
+            <div class="file" id="plot-meta"></div>
+          </header>
+          <div id="lineChart" style="width:100%; height:100%;"></div>
+        </section>
+
+        <!-- 第2行：两个仪表盘，各占一半 -->
+        <section class="card">
+          <header class="card-header" style="min-height: 40px; padding: 6px 12px;"><div class="name">Pending Total</div></header>
+          <div id="gauge1" style="width:100%; height:100%;"></div>
+        </section>
+        <section class="card">
+          <header class="card-header" style="min-height: 40px; padding: 6px 12px;"><div class="name">Pending Favs</div></header>
+          <div id="gauge2" style="width:100%; height:100%;"></div>
+        </section>
+
+        <!-- 第3行：左边 Execs/sec 仪表盘；右边 最新指标 独立卡片 -->
+        <section class="card">
+          <header class="card-header" style="min-height: 40px; padding: 6px 12px;"><div class="name">Execs / Sec</div></header>
+          <div id="gauge3" style="width:100%; height:100%;"></div>
+        </section>
+        <section class="card">
+          <header class="card-header"><div class="name">最新指标</div></header>
+          <div class="stats-mini" style="display:grid; grid-template-columns: 1fr; grid-auto-rows: minmax(0,1fr); gap: 10px; height: calc(100% - 56px); padding: 12px;">
+            <div class="stat" id="s_cycles" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
+              <div style="color:var(--muted); font-size:11px">cycles_done</div>
+              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(0,255,209,0.35)">—</div>
+            </div>
+            <div class="stat" id="s_cur_item" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
+              <div style="color:var(--muted); font-size:11px">cur_item</div>
+              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(124,92,255,0.35)">—</div>
+            </div>
+            <div class="stat" id="s_saved_crashes" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
+              <div style="color:var(--muted); font-size:11px">saved_crashes</div>
+              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(255,120,90,0.4)">—</div>
+            </div>
+            <div class="stat" id="s_max_depth" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
+              <div style="color:var(--muted); font-size:11px">max_depth</div>
+              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(255,200,80,0.35)">—</div>
+            </div>
+            <div class="stat" id="s_total_execs" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
+              <div style="color:var(--muted); font-size:11px">total_execs</div>
+              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(0,255,209,0.3)">—</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 第4行：.cur_input 展示大卡片，横跨两列 -->
+        <section class="card" id="curCard" style="grid-column: 1 / span 2; transition: box-shadow .6s ease, border-color .6s ease; border:1px solid rgba(0,255,209,0.35);">
+          <header class="card-header">
+            <div class="name">当前输入 · .cur_input</div>
+            <div class="file" id="curMeta">（等待数据…）</div>
+            <div class="meta">
+              <span class="mtime" id="curTimer" title="当前内容持续时间">—</span>
+            </div>
+          </header>
+          <div id="curContent" style="height: calc(100% - 56px); padding: 12px; overflow-x: hidden; overflow-y: auto; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; line-height: 1.35; font-size: 14px; column-gap: 24px; column-fill: auto; -webkit-column-fill: auto; column-rule: 1px solid rgba(124,92,255,0.2);">
+            （空）
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <div class="legend">
+          <span>说明：</span>
+          <span>折线：map_size(%), edges_found, corpus_count；仪表：pending_total, pending_favs, execs_per_sec</span>
+        </div>
+        <div class="copyright">© 2025 ChiloDisco</div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // 统一更美观的 ECharts 主题（霓虹深色），替换默认外观
+    echarts.registerTheme('chiloNeon', {
+      color: ['#00ffd1','#7c5cff','#ffd166','#ef476f','#06d6a0','#118ab2'],
+      backgroundColor: 'transparent',
+      textStyle: { fontFamily: 'JetBrains Mono, monospace', color: '#cfe3ff' },
+      grid: { containLabel: true },
+      tooltip: { backgroundColor: 'rgba(12,18,28,0.95)', borderColor: 'rgba(124,92,255,0.35)', textStyle:{ color:'#d8e6ff' } },
+      categoryAxis: {
+        axisLine: { lineStyle: { color: 'rgba(124,92,255,0.45)' }},
+        axisLabel: { color: '#8aa2c2' },
+        splitLine: { show: false }
+      },
+      valueAxis: {
+        axisLine: { lineStyle: { color: 'rgba(124,92,255,0.45)' }},
+        axisLabel: { color: '#8aa2c2' },
+        splitLine: { lineStyle: { color: 'rgba(124,92,255,0.15)' }}
+      },
+      legend: { textStyle: { color: '#cfe3ff' } }
+    });
+
+    const intervalSel = document.getElementById('intervalSel');
+    const dataPathEl = document.getElementById('dataPath');
+    const metaEl = document.getElementById('plot-meta');
+    const mainGrid = document.getElementById('mainGrid');
+
+    let timer = null;
+    let interval = parseInt(intervalSel.value, 10) || 100;
+
+    // 使用自定义主题初始化
+    const lineChart = echarts.init(document.getElementById('lineChart'), 'chiloNeon');
+    const gauge1 = echarts.init(document.getElementById('gauge1'), 'chiloNeon');
+    const gauge2 = echarts.init(document.getElementById('gauge2'), 'chiloNeon');
+    const gauge3 = echarts.init(document.getElementById('gauge3'), 'chiloNeon');
+
+    // 横竖屏自适应布局
+    const mqLandscape = window.matchMedia('(orientation: landscape)');
+
+    // 工具：找到某个子元素所在的 section（卡片）
+    function cardOf(childId){
+      const el = document.getElementById(childId);
+      return el ? el.closest('section') : null;
+    }
+    const lineCard  = cardOf('lineChart');
+    const g1Card    = cardOf('gauge1');
+    const g2Card    = cardOf('gauge2');
+    const g3Card    = cardOf('gauge3');
+    const curCardEl = document.getElementById('curCard');
+    const statsCard = (function(){
+      const s = document.getElementById('s_cycles');
+      return s ? s.closest('section') : null;
+    })();
+
+    function applyLayout(){
+      if (!mainGrid) return;
+      const w = window.innerWidth || document.documentElement.clientWidth || 0;
+      const h = window.innerHeight || document.documentElement.clientHeight || 0;
+      const aspect = h > 0 ? (w / h) : 1.6;
+      const headerFooter = 140; // 与模板一致的头尾高度估算
+      mainGrid.style.height = `calc(100vh - ${headerFooter}px)`;
+
+      if (mqLandscape.matches){
+        // 横屏：第1行更高并放置“折线图 + 最新指标”；第2行三仪表盘更紧凑；第3行 .cur_input 占满
+        mainGrid.style.gridTemplateColumns = '1fr 1fr 1fr';
+        if (aspect >= 2.0){
+          // 超宽横屏：显著抬高第1行，适当压缩仪表盘行
+          mainGrid.style.gridTemplateRows = '2.6fr 1.3fr 1.9fr';
+        } else if (aspect >= 1.6){
+          // 标准横屏
+          mainGrid.style.gridTemplateRows = '2.4fr 1.3fr 1.7fr';
+        } else {
+          // 过渡横屏
+          mainGrid.style.gridTemplateRows = '2.2fr 1.2fr 1.6fr';
+        }
+        // 第1行：折线图占两列；最新指标占一列
+        if (lineCard){ lineCard.style.gridColumn = '1 / span 2'; lineCard.style.gridRow = '1 / span 1'; }
+        if (statsCard){ statsCard.style.gridColumn = '3 / span 1'; statsCard.style.gridRow = '1 / span 1'; }
+        // 第2行：三个仪表盘分列（更小）
+        if (g1Card){ g1Card.style.gridColumn = '1 / span 1'; g1Card.style.gridRow = '2 / span 1'; }
+        if (g2Card){ g2Card.style.gridColumn = '2 / span 1'; g2Card.style.gridRow = '2 / span 1'; }
+        if (g3Card){ g3Card.style.gridColumn = '3 / span 1'; g3Card.style.gridRow = '2 / span 1'; }
+        // 第3行：.cur_input 跨三列
+        if (curCardEl){ curCardEl.style.gridColumn = '1 / span 3'; curCardEl.style.gridRow = '3 / span 1'; }
+      } else {
+        // 竖屏：保留原有 2 列 × 4 行布局
+        mainGrid.style.gridTemplateColumns = '1fr 1fr';
+        mainGrid.style.gridTemplateRows    = '1.2fr 0.9fr 0.9fr 1fr';
+        // 第1行：折线图跨两列
+        if (lineCard){ lineCard.style.gridColumn = '1 / span 2'; lineCard.style.gridRow = '1 / span 1'; }
+        // 第2行：两个仪表盘各占一半
+        if (g1Card){ g1Card.style.gridColumn = '1 / span 1'; g1Card.style.gridRow = '2 / span 1'; }
+        if (g2Card){ g2Card.style.gridColumn = '2 / span 1'; g2Card.style.gridRow = '2 / span 1'; }
+        // 第3行：左 Execs/sec；右 最新指标
+        if (g3Card){ g3Card.style.gridColumn = '1 / span 1'; g3Card.style.gridRow = '3 / span 1'; }
+        if (statsCard){ statsCard.style.gridColumn = '2 / span 1'; statsCard.style.gridRow = '3 / span 1'; }
+        // 第4行：.cur_input 跨两列
+        if (curCardEl){ curCardEl.style.gridColumn = '1 / span 2'; curCardEl.style.gridRow = '4 / span 1'; }
+      }
+      // 重绘图表以适配
+      lineChart.resize(); gauge1.resize(); gauge2.resize(); gauge3.resize();
+    }
+    mqLandscape.addEventListener ? mqLandscape.addEventListener('change', applyLayout) : mqLandscape.addListener(applyLayout);
+
+    // 保持用户图例选择状态，避免刷新后被重置；并在点击后短暂停止轮询，防止刷新抢占
+    let legendSelected = null;
+    let pauseUntil = 0;
+    lineChart.on('legendselectchanged', (e) => {
+      legendSelected = Object.assign({}, e.selected);
+      pauseUntil = Date.now() + 600; // 600ms 交互保护时间
+    });
+
+    // 半圆仪表盘配置，更具美感
+    function gaugeOption(name, val, maxVal, colorStops, unit, scale){
+      const v = Number.isFinite(val) ? val : 0;
+      const m = Math.max(1, maxVal || 100);
+      const sc = Number.isFinite(scale) ? scale : 1.0;
+      const colors = colorStops || [[0.3, '#00ffd1'], [0.7, '#ffd166'], [1, '#ef476f']];
+      const axisW = Math.round(14 * sc);
+      const ptrW  = Math.max(3, Math.round(4 * sc));
+      const fz    = Math.round(26 * sc);
+      const titleFz = Math.round(12 * sc);
+      return {
+        animationDurationUpdate: 300,
+        series: [{
+          type: 'gauge',
+          startAngle: 200,
+          endAngle: -20,
+          center: ['50%', sc > 1 ? '66%' : '60%'],
+          radius: sc > 1 ? '92%' : '88%',
+          min: 0,
+          max: m,
+          splitNumber: 5,
+          pointer: { show: true, length: '62%', width: ptrW, itemStyle: { color: '#e5f1ff' } },
+          progress: { show: true, overlap: false, roundCap: true, clip: false, itemStyle: { color: '#7c5cff' } },
+          axisLine: { lineStyle: { width: axisW, color: colors }},
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          title: { show: true, color: '#9fb6d8', fontSize: titleFz, offsetCenter: [0,'70%'] },
+          detail: {
+            valueAnimation: true,
+            fontSize: fz,
+            color: '#d0e0ff',
+            offsetCenter: [0, sc > 1 ? '30%' : '35%'],
+            formatter: (x) => unit ? `${x}${unit}` : `${x}`
+          },
+          data: [{ value: v, name }]
+        }]
+      };
+    }
+
+    function hueForAge(ageSec){
+      if (ageSec <= 2) return 140;
+      if (ageSec <= 5) return 105;
+      if (ageSec <= 10) return 80;
+      if (ageSec <= 20) return 60;
+      if (ageSec <= 40) return 40;
+      if (ageSec <= 60) return 25;
+      if (ageSec <= 90) return 12;
+      return 0;
+    }
+    // 发光强度：时间越久越亮（与日志页相反）
+    function growGlow(ageSec){
+      if (ageSec <= 2) return { blur: 2, alpha: 0.15 };
+      if (ageSec <= 5) return { blur: 4, alpha: 0.25 };
+      if (ageSec <= 10) return { blur: 6, alpha: 0.35 };
+      if (ageSec <= 20) return { blur: 8, alpha: 0.45 };
+      if (ageSec <= 40) return { blur: 10, alpha: 0.55 };
+      if (ageSec <= 60) return { blur: 12, alpha: 0.65 };
+      if (ageSec <= 90) return { blur: 14, alpha: 0.75 };
+      return { blur: 18, alpha: 0.9 };
+    }
+
+    function fmtDuration(sec){
+      const s = Math.max(0, Math.floor(sec||0));
+      const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+      const pad = (x)=> (x<10?('0'+x):(''+x));
+      return h>0 ? `${pad(h)}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
+    }
+
+    function renderAll(data){
+      const meta = data.meta || {}; const s = data.series || {};
+      const t = s.t || [];
+      const map_size = s.map_size || [];
+      const edges_found = s.edges_found || [];
+      const corpus_count = s.corpus_count || [];
+
+      dataPathEl.textContent = meta.path ? ('文件：' + meta.path) : '未找到 plotdata';
+      metaEl.textContent = meta.exists ? (new Date(meta.mtime).toLocaleString() + ' · ' + (meta.size||0) + 'B') : '等待数据…';
+
+      // 更美观的折线：面积渐变 + 光晕 + 平滑动画；保留用户图例选择
+      const opt = {
+        backgroundColor: 'transparent',
+        grid: { left: 50, right: 24, top: 30, bottom: 64 },
+        animation: true,
+        animationDuration: 600,
+        animationEasing: 'quadraticOut',
+        axisPointer: { link: [{ xAxisIndex: 'all' }], label: { backgroundColor: 'rgba(20,26,36,0.9)' } },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'line' } },
+        legend: { data: ['map_size(%)','edges_found','corpus_count'], selected: legendSelected || undefined, top: null, bottom: 0, left: 'center', itemWidth: 32, itemHeight: 20, itemGap: 20, selectedMode: 'multiple', textStyle: { fontSize: 15, color: '#cfe3ff' } },
+        xAxis: {
+          type: 'value',
+          min: 'dataMin',
+          max: 'dataMax',
+          boundaryGap: false,
+          axisLabel: { color: '#8aa2c2' },
+          splitLine: { show: false }
+        },
+        yAxis: [
+          {
+            type: 'value', name: '%', position: 'left', scale: true,
+            min: function(v){
+              const min = Number.isFinite(v.min) ? v.min : 0;
+              const max = Number.isFinite(v.max) ? v.max : (min+1);
+              if (min === max) return Math.max(0, min - 1);
+              const pad = Math.max(0.5, (max - min) * 0.1); // 至少 0.5 个百分点留白
+              return Math.max(0, min - pad);
+            },
+            max: function(v){
+              const min = Number.isFinite(v.min) ? v.min : 0;
+              const max = Number.isFinite(v.max) ? v.max : (min+1);
+              if (min === max) return max + 1;
+              const pad = Math.max(0.5, (max - min) * 0.1);
+              return max + pad;
+            },
+            axisLabel: { formatter: '{value}%' }
+          },
+          {
+            type: 'value', position: 'right', scale: true,
+            min: function(v){
+              const min = Number.isFinite(v.min) ? v.min : 0;
+              const max = Number.isFinite(v.max) ? v.max : (min+1);
+              if (min === max) return Math.max(0, min - 1);
+              const pad = Math.max(1, (max - min) * 0.1); // 至少 1 的留白
+              return Math.max(0, min - pad);
+            },
+            max: function(v){
+              const min = Number.isFinite(v.min) ? v.min : 0;
+              const max = Number.isFinite(v.max) ? v.max : (min+2);
+              if (min === max) return max + 1;
+              const pad = Math.max(1, (max - min) * 0.1);
+              return max + pad;
+            }
+          },
+          {
+            type: 'value', position: 'right', scale: true, offset: 52,
+            min: function(v){
+              const min = Number.isFinite(v.min) ? v.min : 0;
+              const max = Number.isFinite(v.max) ? v.max : (min+1);
+              if (min === max) return Math.max(0, min - 1);
+              const pad = Math.max(1, (max - min) * 0.1);
+              return Math.max(0, min - pad);
+            },
+            max: function(v){
+              const min = Number.isFinite(v.min) ? v.min : 0;
+              const max = Number.isFinite(v.max) ? v.max : (min+2);
+              if (min === max) return max + 1;
+              const pad = Math.max(1, (max - min) * 0.1);
+              return max + pad;
+            }
+          }
+        ],
+        series: [
+          {
+            name: 'map_size(%)', type: 'line', yAxisIndex: 0, smooth: true, showSymbol: false, data: t.map((ti,i)=>[ti, map_size[i]]),
+            lineStyle:{ color:'#00ffd1', width: 2 },
+            areaStyle:{
+              opacity: 0.25,
+              color: new echarts.graphic.LinearGradient(0,0,0,1,[{ offset:0, color:'rgba(0,255,209,0.35)'},{ offset:1, color:'rgba(0,255,209,0.02)'}])
+            },
+            emphasis: { focus: 'series' }
+          },
+          {
+            name: 'edges_found', type: 'line', yAxisIndex: 1, smooth: true, showSymbol: false, data: t.map((ti,i)=>[ti, edges_found[i]]),
+            lineStyle:{ color:'#7c5cff', width: 2 },
+            areaStyle:{ opacity: 0.20, color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(124,92,255,0.35)'},{offset:1,color:'rgba(124,92,255,0.02)'}]) }
+          },
+          {
+            name: 'corpus_count', type: 'line', yAxisIndex: 2, smooth: true, showSymbol: false, data: t.map((ti,i)=>[ti, corpus_count[i]]),
+            lineStyle:{ color:'#ffd166', width: 2 },
+            areaStyle:{ opacity: 0.18, color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,209,102,0.35)'},{offset:1,color:'rgba(255,209,102,0.02)'}]) }
+          }
+        ]
+      };
+      if (legendSelected) {
+        opt.legend.selected = legendSelected;
+      }
+      lineChart.setOption(opt, { notMerge: false, lazyUpdate: true });
+      // 回读一次，确保获取用户最新选择状态（包括外部交互）
+      try {
+        const optNow = lineChart.getOption();
+        if (optNow && optNow.legend && optNow.legend.length && optNow.legend[0].selected) {
+          legendSelected = Object.assign({}, optNow.legend[0].selected);
+        }
+      } catch(_) {}
+
+      const lastIdx = t.length ? t.length - 1 : -1;
+      const latest = (k) => (s[k] && lastIdx>=0 ? s[k][lastIdx] : 0);
+
+      // 仪表：根据当前值动态设置上限，使指针有富余空间；横屏按卡片高度动态缩放
+      function gaugeScaleFor(card){
+        try{
+          const h = card ? card.clientHeight : 0;
+          if (!h || !Number.isFinite(h)) return (mqLandscape.matches ? 1.15 : 0.95);
+          if (mqLandscape.matches){
+            // 横屏：略放大，但控制上限，避免过大遮挡
+            return Math.max(1.05, Math.min(1.5, h / 340));
+          } else {
+            // 竖屏：整体稍微缩小一点点，留出更多空间
+            return Math.max(0.85, Math.min(1.4, h / 360));
+          }
+        }catch(_){ return (mqLandscape.matches ? 1.15 : 0.95); }
+      }
+      const sc1 = gaugeScaleFor(g1Card);
+      const sc2 = gaugeScaleFor(g2Card);
+      const sc3 = gaugeScaleFor(g3Card);
+      gauge1.setOption(gaugeOption('pending_total', latest('pending_total'), Math.max(10, latest('pending_total')*1.6), undefined, '', sc1));
+      gauge2.setOption(gaugeOption('pending_favs', latest('pending_favs'), Math.max(10, latest('pending_favs')*1.6), undefined, '', sc2));
+      gauge3.setOption(gaugeOption('execs_per_sec', latest('execs_per_sec'), Math.max(50, latest('execs_per_sec')*1.6), [[0.3,'#ffd166'],[0.7,'#06d6a0'],[1,'#118ab2']], '', sc3));
+
+      const setStat = (id, val) => { const el = document.querySelector('#'+id+' .val'); if (el) el.textContent = (val ?? '—'); };
+      setStat('s_cycles', latest('cycles_done'));
+      setStat('s_cur_item', latest('cur_item'));
+      setStat('s_saved_crashes', latest('saved_crashes'));
+      setStat('s_max_depth', latest('max_depth'));
+      setStat('s_total_execs', latest('total_execs'));
+
+      // 渲染 .cur_input
+      const cur = (data && data.cur_input) ? data.cur_input : null;
+      const card = document.getElementById('curCard');
+      const metaBox = document.getElementById('curMeta');
+      const cont = document.getElementById('curContent');
+      const timerBox = document.getElementById('curTimer');
+      if (cur && card && cont && metaBox && timerBox){
+        const m = cur.meta || {};
+        const txt = (cur.content || '').replace(/^\uFEFF/, '');
+        metaBox.textContent = m.exists ? `${m.path} · ${m.size||0}B · ${new Date(m.mtime||Date.now()).toLocaleString()}` : '未找到 .cur_input';
+        timerBox.textContent = m.exists ? ('已运行 ' + fmtDuration(cur.since_sec||0)) : '—';
+
+        // 内容展示：根据长度与方向自动切换列数（无横向滚动，不截断）
+        const lines = txt.split(/\r?\n/);
+        const isLandscape = mqLandscape.matches;
+        let cols = (lines.length >= 120 || txt.length > 8000) ? 3 : ((lines.length >= 30 || txt.length > 1500) ? 2 : 1);
+        // 要求：竖屏也应显示双栏，因此在竖屏下至少 2 栏；横屏至少 2 栏
+        cols = Math.max(cols, 2);
+        cont.style.columnCount = cols;
+        cont.innerText = txt || '（空）';
+
+        // 边框与发光：时间越久越红、越亮
+        const age = Math.max(0, cur.since_sec||0);
+        const h = hueForAge(age);
+        const glow = growGlow(age);
+        const border = `hsl(${h}, 95%, 55%)`;
+        const outer = `0 0 ${Math.round(glow.blur*1.6)}px hsla(${h}, 95%, 60%, ${glow.alpha})`;
+        const inner = `inset 0 0 ${Math.round(glow.blur)}px hsla(${h}, 90%, 55%, ${Math.min(1, glow.alpha*0.8)})`;
+        card.style.borderColor = border;
+        card.style.boxShadow = `${outer}, ${inner}`;
+      }
+    }
+
+    async function fetchPlot(){
+      try{
+        if (Date.now() < pauseUntil) return; // 交互保护：暂停轮询，避免覆盖图例点击
+        const r = await fetch('/api/plot?t=' + Date.now(), { cache: 'no-store' });
+        const data = await r.json();
+        renderAll(data);
+      }catch(e){ console.error(e); }
+    }
+
+    function start(){ stop(); timer = setInterval(fetchPlot, interval); }
+    function stop(){ if (timer) { clearInterval(timer); timer=null; } }
+
+    intervalSel.addEventListener('change', () => { interval = parseInt(intervalSel.value,10)||100; start(); });
+    window.addEventListener('resize', () => { applyLayout(); });
+
+    applyLayout();
+    fetchPlot();
+    start();
+  </script>
+</body>
+</html>
