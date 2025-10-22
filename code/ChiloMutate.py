@@ -100,7 +100,7 @@ def fuzz(buf, add_buf, max_size):
     chilo_factory.main_logger.info("变异完成")
     # 确保类型正确
     if isinstance(mutated_out, str):
-        mutated_out = bytearray(mutated_out.encode("utf-8"))
+        mutated_out = bytearray(mutated_out, "utf-8", errors="ignore")
         # 检查并截断
 
     ori_mutate_out_size = len(mutated_out)

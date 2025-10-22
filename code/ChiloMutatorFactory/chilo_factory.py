@@ -55,6 +55,7 @@ class ChiloFactory:
 
         self.fix_mutator_try_time = config['OTHERS']['FIX_MUTATOR_TRY_TIME']
         self.semantic_fix_max_time = config['OTHERS']['SEMANTIC_FIX_MAX_TIME']
+        self.times_to_structural_mutator = config['OTHERS']['TIMES_TO_STRUCTURAL_MUTATOR']
 
         #下面是CSV文件
         self.mutator_fixer_csv_path = config['CSV']['MUTATOR_FIXER_CSV_PATH']
@@ -331,7 +332,7 @@ class ChiloFactory:
         self.main_logger.info(
             f"种子编号：{seed_id} 被选择次数：{self.all_seed_list.seed_list[seed_id].chose_time}")
 
-        if self.all_seed_list.seed_list[seed_id].chose_time % 10 == 0:
+        if self.all_seed_list.seed_list[seed_id].chose_time % self.times_to_structural_mutator == 0:
             self.main_logger.info(f"种子编号：{seed_id} 达到结构化变异标准，进行结构化变异")
             #说明进行一次结构性变异
             self.structural_mutator_list.put({"seed_id":seed_id , "mutate_time":mutate_time})
@@ -396,7 +397,7 @@ class ChiloFactory:
         self.all_seed_list.seed_list[mutator.seed_id].mutate_time += 1
         self.main_logger.info(
             f"调用变异完成，为该种子的第{self.all_seed_list.seed_list[mutator.seed_id].mutate_time}次变异 变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
-        return bytearray(mutate_testcase, "utf-8"), is_by_random, mutator.seed_id, mutator.mutator_id
+        return bytearray(mutate_testcase, "utf-8", errors="ignore"), is_by_random, mutator.seed_id, mutator.mutator_id
 
 
 
