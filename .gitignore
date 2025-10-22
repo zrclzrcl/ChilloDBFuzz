@@ -6,3 +6,4 @@ __pycache__/
 output/
 .vscode
 ChiloDisco/frontend/node_modules/
+ChiloDisco/__pycache__
