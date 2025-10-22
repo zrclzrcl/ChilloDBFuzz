@@ -28,13 +28,11 @@ echo core | sudo tee /proc/sys/kernel/core_pattern
 
 #下面请在主机终端2运行
 docker exec -it sqlite_chilofuzz_test bash
-cd ../ChiloDisco/
-python3 app.py  #启动ChiloDisco后端
+cd ../ChiloDisco/ && python3 app.py  #启动ChiloDisco后端
 
 #下面请在主机终端3运行
 docker exec -it sqlite_chilofuzz_test bash
-cd ../ChiloDisco/frontend/
-npm run dev -- --host 0.0.0.0
+cd ../ChiloDisco/frontend/ && npm run dev -- --host 0.0.0.0
 
 #下面请在主机终端1运行
 python3 start_fuzz.py
