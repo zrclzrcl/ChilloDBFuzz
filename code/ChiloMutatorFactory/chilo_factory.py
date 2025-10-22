@@ -51,7 +51,10 @@ class ChiloFactory:
         self.mutator_fix_tmp_path = config['FILE_PATH']['MUTATOR_FIX_TMP_PATH']
         self.mutator_pool = ChiloMutator.ChiloMutatorPool(self.generated_mutator_path)  #一个变异器池
         self.all_seed_list = seed.AFLSeedList() #收到的所有seed的列表
+
+
         self.fix_mutator_try_time = config['OTHERS']['FIX_MUTATOR_TRY_TIME']
+        self.semantic_fix_max_time = config['OTHERS']['SEMANTIC_FIX_MAX_TIME']
 
         #下面是CSV文件
         self.mutator_fixer_csv_path = config['CSV']['MUTATOR_FIXER_CSV_PATH']
@@ -149,7 +152,7 @@ class ChiloFactory:
                              "semantic_random_error_count","semantic_error_count",
                              "semantic_error_llm_use_time",
                              "semantic_error_llm_count","semantic_llm_format_error",
-                             "semantic_up_token", "semantic_down_token","left_fix_queue_count"])
+                             "semantic_up_token", "semantic_down_token","left_fix_queue_count", "at_last_is_all_correct"])
 
         with open(self.structural_mutator_csv_path, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -253,7 +256,8 @@ class ChiloFactory:
                                 sematic_use_time, semantic_mask_error_count, semantic_random_error_count,
                                 semantic_error_count,semantic_error_llm_use_time,
                                 semantic_error_llm_count,
-                                semantic_llm_format_error,semantic_up_token, semantic_down_token,left_fix_queue_count ):
+                                semantic_llm_format_error,semantic_up_token, semantic_down_token,left_fix_queue_count,
+                                at_last_is_all_correct):
         """
         向mutator_fixer的csv中写入一行
         :param need_mutate_count: 需要进行变异的次数
@@ -279,11 +283,12 @@ class ChiloFactory:
         :param semantic_llm_format_error: 修复语义错误时LLM格式错误次数
         :param semantic_up_token: 语义修复上传总token
         :param semantic_down_token: 语义修复补全总token
+        :param at_last_is_all_correct : 最终是否完全正确
         :return:
         """
         with open(self.mutator_fixer_csv_path, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow([real_time, real_time-self.start_time, seed_id, mutator_id, need_mutate_count, all_use_time,  all_llm_count, syntax_use_time,syntax_error_count, syntax_format_error_time,syntax_llm_use_time,syntax_llm_count,syntax_up_token, syntax_down_token,sematic_use_time, semantic_mask_error_count, semantic_random_error_count, semantic_error_count, semantic_error_llm_use_time,semantic_error_llm_count,semantic_llm_format_error,semantic_up_token, semantic_down_token,left_fix_queue_count])
+            writer.writerow([real_time, real_time-self.start_time, seed_id, mutator_id, need_mutate_count, all_use_time,  all_llm_count, syntax_use_time,syntax_error_count, syntax_format_error_time,syntax_llm_use_time,syntax_llm_count,syntax_up_token, syntax_down_token,sematic_use_time, semantic_mask_error_count, semantic_random_error_count, semantic_error_count, semantic_error_llm_use_time,semantic_error_llm_count,semantic_llm_format_error,semantic_up_token, semantic_down_token,left_fix_queue_count,at_last_is_all_correct])
 
     def write_structural_mutator_csv(self, real_time, seed_id, new_seed_id,
                                      all_use_time, llm_up_token, llm_down_token, llm_count,

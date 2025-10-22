@@ -129,6 +129,7 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
         semantic_llm_format_error = 0
         semantic_up_token_all = 0
         semantic_down_token_all = 0
+        at_last_is_all_correct = True
         my_chilo_factory.mutator_fixer_logger.info("等待接收变异器修复任务")
         need_fix = my_chilo_factory.fix_mutator_list.get()  #先从队列中取一个用来修复
         fix_seed_id = need_fix["seed_id"]
@@ -180,10 +181,20 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
 
                 my_chilo_factory.mutator_fixer_logger.info(
                     f"seed_id：{fix_seed_id}，语义检测结果为：{is_semantics_correct}")
-                if all(is_semantics_correct):
+                if all(is_semantics_correct) or semantic_error_count >= my_chilo_factory.semantic_fix_max_time:
+                    #进入到这里，说明有两个可能性：修复次数超过最大尝试次数，表示放弃
+                    #另一个可能性：完全正确
+                    if all(is_semantics_correct):
+                        #说明语法完全正确
+                        my_chilo_factory.mutator_fixer_logger.info(
+                            f"seed_id：{fix_seed_id}，生成的变异器语义正确！经过{syntax_error_count}次语法修复 + {semantic_error_count}次语义修复")
+                        at_last_is_all_correct = True
+                    else:
+                        my_chilo_factory.mutator_fixer_logger.info(
+                            f"seed_id：{fix_seed_id}，生成的变异器语义不正确！但以及达到了最高修复次数上限 经过{syntax_error_count}次语法修复 + {semantic_error_count}次语义修复")
+                        at_last_is_all_correct = False
                     #语义完全正确，则跳出循环
-                    my_chilo_factory.mutator_fixer_logger.info(
-                        f"seed_id：{fix_seed_id}，生成的变异器语义正确！")
+
                     sematic_fix_end_time = time.time()
                     sematic_fix_use_time_all += sematic_fix_end_time - sematic_fix_start_time
                     break
@@ -196,7 +207,7 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                     while True:
                         semantics_fix_start_time = time.time()
                         my_chilo_factory.mutator_fixer_logger.info(
-                            f"seed_id：{fix_seed_id}，准备调用LLM进行语义修复")
+                            f"seed_id：{fix_seed_id}，准备调用LLM进行第 {semantic_error_count} 次语义修复")
                         semantics_fix_result, semantic_up_token, semantic_down_token = my_chilo_factory.llm_tool_box.chat_llm(semantics_prompt)
                         llm_use_count += 1
                         semantic_error_llm_count += 1
@@ -204,13 +215,13 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                         semantic_up_token_all += semantic_up_token
                         semantic_down_token_all += semantic_down_token
                         my_chilo_factory.mutator_fixer_logger.info(
-                            f"seed_id：{fix_seed_id}，调用LLM进行语义修复结束，用时{time.time()-semantics_fix_start_time:.2f}s")
+                            f"seed_id：{fix_seed_id}，调用LLM进行第 {semantic_error_count} 次语义修复结束，用时{time.time()-semantics_fix_start_time:.2f}s")
                         try:
                             fix_mutator_code = semantics_fix_result[0]
                             break
                         except:
                             my_chilo_factory.mutator_fixer_logger.warning(
-                                f"seed_id：{fix_seed_id}，调用LLM进行语义修复时格式错误，准备重试")
+                                f"seed_id：{fix_seed_id}，调用LLM进行第 {semantic_error_count} 次语义修复时格式错误，准备重试")
                             semantic_llm_format_error += 1
                             continue
                     sematic_fix_end_time = time.time()
@@ -220,14 +231,14 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                 syntax_fix_start_time = time.time()
                 syntax_error_count += 1
                 my_chilo_factory.mutator_fixer_logger.info(
-                    f"seed_id：{fix_seed_id}，试运行失败，出现语法错误，准备进行语法修复")
+                    f"seed_id：{fix_seed_id}，试运行失败，出现语法错误，准备进行第 {syntax_error_count} 次语法修复")
                 error_trace = traceback.format_exc()
                 # 出问题那就是语法有问题，调用LLM修复
                 fix_syntax_prompt = get_fix_syntax_prompt(fix_mutator_code, error_trace)
                 while True:
                     syntax_fix_start_time_llm = time.time()
                     my_chilo_factory.mutator_fixer_logger.info(
-                        f"seed_id：{fix_seed_id}，等待调用LLM修复语法问题")
+                        f"seed_id：{fix_seed_id}，等待调用LLM修复第 {syntax_error_count} 次语法问题")
                     llm_syntax_fix, syntax_fix_up_token, syntax_fix_down_token = my_chilo_factory.llm_tool_box.chat_llm(fix_syntax_prompt, "You are an expert in debugging and repairing Python code. Fix the given Python code based on the user's requirements.")
                     llm_use_count += 1
                     syntax_llm_count += 1
@@ -236,13 +247,13 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                     llm_syntax_fix = my_chilo_factory.llm_tool_box.get_python_block_content(llm_syntax_fix)
                     syntax_fix_end_time_llm = time.time()
                     my_chilo_factory.mutator_fixer_logger.info(
-                        f"seed_id：{fix_seed_id}，调用LLM修复语法问题结束，用时：{syntax_fix_end_time_llm - syntax_fix_start_time_llm:.2f}s")
+                        f"seed_id：{fix_seed_id}，调用LLM修复第 {syntax_error_count} 次语法问题结束，用时：{syntax_fix_end_time_llm - syntax_fix_start_time_llm:.2f}s")
                     syntax_fix_use_time_llm += syntax_fix_end_time_llm - syntax_fix_start_time_llm
                     semantic_error_llm_use_time += syntax_fix_end_time_llm - syntax_fix_start_time_llm
                     try:
                         fix_mutator_code = llm_syntax_fix[0]
                         my_chilo_factory.mutator_fixer_logger.info(
-                            f"seed_id：{fix_seed_id}，语法修复成功，准备进行下一轮检测")
+                            f"seed_id：{fix_seed_id}，第 {syntax_error_count} 次语法修复成功，准备进行下一轮检测")
                         syntax_fix_end_time = time.time()
                         syntax_fix_use_time_all += syntax_fix_end_time - syntax_fix_start_time
                         break
@@ -250,7 +261,7 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                         #出问题，表示输出格式有问题，从新来
                         syntax_llm_format_error_count += 1
                         my_chilo_factory.mutator_fixer_logger.warning(
-                            f"seed_id：{fix_seed_id}，语法修复失败，LLM返回格式错误，准备进行下一轮尝试")
+                            f"seed_id：{fix_seed_id}，第 {syntax_error_count} 次语法修复失败，LLM返回格式错误，准备进行下一轮尝试")
 
         #到这里说明语法语义都没问题了
         #先获取一个mutator_id
@@ -287,4 +298,4 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                                           syntax_llm_count, syntax_fix_up_token_all, syntax_fix_down_token_all,
                                           sematic_fix_use_time_all, sematic_mask_error_count, sematic_random_error_count,
                                           semantic_error_count, semantic_error_llm_use_time, semantic_error_llm_count,
-                                          semantic_llm_format_error, semantic_up_token_all, semantic_down_token_all, left_fix_queue_size)
+                                          semantic_llm_format_error, semantic_up_token_all, semantic_down_token_all, left_fix_queue_size, at_last_is_all_correct)
