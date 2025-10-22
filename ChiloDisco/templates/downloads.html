@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChiloDisco · 结果下载</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <canvas id="globalParticles"></canvas>
+  <div id="app" class="layout">
+    <aside class="sidenav">
+      <div class="nav-brand">
+        <span class="logo">⚡</span>
+        <span class="title">ChiloDisco</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/">日志监控</a>
+        <a href="/plot">数据大屏</a>
+        <a class="active" href="/downloads">结果下载</a>
+        <a href="#">系统设置</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <header class="app-header">
+        <div class="brand">
+          <span class="subtitle">AFL++ 结果与数据下载</span>
+        </div>
+        <div class="controls" style="gap:10px">
+          <button id="refreshBtn" class="btn">刷新状态</button>
+        </div>
+      </header>
+
+      <!-- 快捷操作栏 - 两行布局 -->
+      <div class="quick-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px;">
+        <!-- 第一行 -->
+        <div class="action-card" style="background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+          <div style="width: 100%;">
+            <div style="color: var(--neon-cyan); font-size: 18px; font-weight: 600; margin-bottom: 8px;">📊 plot_data</div>
+            <div id="pdMeta" style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">等待探测...</div>
+            <div id="pdTips" style="color: var(--text-muted); font-size: 13px;">—</div>
+          </div>
+          <button id="downloadPlot" class="btn primary" style="width: 100%; padding: 14px 24px; font-size: 16px;">⬇ 下载 plot_data</button>
+        </div>
+
+        <div class="action-card" style="background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+          <div style="width: 100%;">
+            <div style="color: var(--neon-cyan); font-size: 18px; font-weight: 600; margin-bottom: 8px;">📦 CSV 批量打包</div>
+            <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">批量下载所有 CSV 文件</div>
+            <div style="color: var(--text-muted); font-size: 13px;">不存在的文件将自动跳过</div>
+          </div>
+          <button id="downloadZip" class="btn primary" style="width: 100%; padding: 14px 24px; font-size: 16px;">📥 打包下载 CSV</button>
+        </div>
+
+        <!-- 第二行 - 文件夹打包下载 -->
+        <div class="action-card" style="background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+          <div style="width: 100%;">
+            <div style="color: var(--neon-purple); font-size: 18px; font-weight: 600; margin-bottom: 8px;">📁 解析SQL打包</div>
+            <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">打包 ParsedSQL 文件夹</div>
+            <div style="color: var(--text-muted); font-size: 13px;">包含所有解析完成的SQL文件</div>
+          </div>
+          <button id="downloadParsedSQL" class="btn primary" style="width: 100%; padding: 14px 24px; font-size: 16px;">📥 打包下载</button>
+        </div>
+
+        <div class="action-card" style="background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+          <div style="width: 100%;">
+            <div style="color: var(--neon-purple); font-size: 18px; font-weight: 600; margin-bottom: 8px;">🔧 生成变异器打包</div>
+            <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">打包 GeneratedMutator 文件夹</div>
+            <div style="color: var(--text-muted); font-size: 13px;">包含所有生成的变异器文件</div>
+          </div>
+          <button id="downloadGeneratedMutator" class="btn primary" style="width: 100%; padding: 14px 24px; font-size: 16px;">📥 打包下载</button>
+        </div>
+
+        <div class="action-card" style="background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+          <div style="width: 100%;">
+            <div style="color: var(--neon-green); font-size: 18px; font-weight: 600; margin-bottom: 8px;">⚙️ 结构变异SQL打包</div>
+            <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">打包 StructuralMutateSQL 文件夹</div>
+            <div style="color: var(--text-muted); font-size: 13px;">包含结构变异生成的SQL文件</div>
+          </div>
+          <button id="downloadStructuralSQL" class="btn primary" style="width: 100%; padding: 14px 24px; font-size: 16px;">📥 打包下载</button>
+        </div>
+
+        <div class="action-card" style="background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+          <div style="width: 100%;">
+            <div style="color: var(--neon-pink); font-size: 18px; font-weight: 600; margin-bottom: 8px;">📦 全部打包</div>
+            <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 6px;">打包所有输出文件</div>
+            <div style="color: var(--text-muted); font-size: 13px;">包括日志、CSV、SQL等所有文件</div>
+          </div>
+          <button id="downloadAll" class="btn primary" style="width: 100%; padding: 14px 24px; font-size: 16px;">📥 打包全部</button>
+        </div>
+      </div>
+
+      <!-- CSV 和 LOG 文件列表主卡片 -->
+      <main class="grid" style="grid-template-columns: 1fr; grid-auto-rows: 1fr; height: calc(100vh - 520px); overflow: visible; padding: 20px;">
+        <section class="card">
+          <header class="card-header">
+            <div class="name">数据文件列表</div>
+            <div class="file">CSV 和 日志文件</div>
+          </header>
+          <div class="card-body" style="display:flex; flex-direction:column; min-height:0; height:100%; padding: 0;">
+            <div id="fileList" class="table sticky-head" style="flex:1; min-height:0;">
+              <div class="t-head" style="display: grid; grid-template-columns: 200px 1fr 120px 180px 110px; gap: 12px; padding: 0 16px;">
+                <div>类型 / 键名</div>
+                <div>文件路径</div>
+                <div>文件大小</div>
+                <div>修改时间</div>
+                <div>操作</div>
+              </div>
+              <div id="fileRows" class="t-body"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <div class="legend">
+          <span>提示：</span>
+          <span>路径相对于 code/ChiloMutate.py 所在目录 | 不可用的文件按钮会被禁用</span>
+        </div>
+        <div class="copyright">© 2025 ChiloDisco</div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const pdMeta = document.getElementById('pdMeta');
+    const pdTips = document.getElementById('pdTips');
+    const btnPlot = document.getElementById('downloadPlot');
+    const btnZip = document.getElementById('downloadZip');
+    const rowsBox = document.getElementById('fileRows');
+    const btnRefresh = document.getElementById('refreshBtn');
+
+    function humanSize(bytes){
+      if (!bytes || bytes < 0) return '—';
+      if (bytes < 1024) return bytes + ' B';
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      const val = (bytes / Math.pow(1024, i)).toFixed(1);
+      return val + ' ' + ['B','KB','MB','GB','TB'][i];
+    }
+
+    async function refreshPlot(){
+      try{
+        const r = await fetch('/api/plot?t=' + Date.now(), { cache:'no-store' });
+        const data = await r.json();
+        const meta = data.meta || {};
+        if (meta && meta.path){
+          pdMeta.textContent = meta.exists ? `${meta.path} · ${humanSize(meta.size||0)} · ${new Date(meta.mtime||Date.now()).toLocaleString()}` : `${meta.path} （不存在）`;
+          btnPlot.disabled = !meta.exists;
+          pdTips.textContent = meta.exists ? '可下载' : '文件不存在或未生成';
+        }else{
+          pdMeta.textContent = '未找到 plot_data 路径';
+          btnPlot.disabled = true;
+          pdTips.textContent = '—';
+        }
+      }catch(e){ console.error(e); }
+    }
+
+    async function refreshFiles(){
+      try{
+        // 获取CSV列表
+        const csvResp = await fetch('/api/download/csv/list?t='+Date.now(), { cache:'no-store' });
+        const csvData = await csvResp.json();
+        const csvItems = csvData.items || [];
+        
+        // 获取LOG列表
+        const logResp = await fetch('/api/logs?t='+Date.now(), { cache:'no-store' });
+        const logData = await logResp.json();
+        const logs = logData.logs || {};
+        
+        rowsBox.innerHTML = '';
+        
+        // 添加CSV文件
+        for (const it of csvItems){
+          const row = document.createElement('div');
+          row.className = 't-row';
+          row.style.display = 'grid';
+          row.style.gridTemplateColumns = '200px 1fr 120px 180px 110px';
+          row.style.alignItems = 'center';
+          row.style.gap = '12px';
+          row.style.padding = '0 16px';
+          
+          const btn = document.createElement('button');
+          btn.className = 'btn primary';
+          btn.textContent = '下载';
+          btn.style.padding = '8px 18px';
+          btn.style.fontSize = '14px';
+          btn.disabled = !it.exists;
+          btn.onclick = ()=>{ window.location.href = '/api/download/csv?key=' + encodeURIComponent(it.key); };
+          
+          const keyDiv = document.createElement('div');
+          keyDiv.innerHTML = `📊 CSV<br/><span style="font-size:12px; color: var(--text-muted);">${it.key}</span>`;
+          
+          const pathDiv = document.createElement('div');
+          pathDiv.style.overflow = 'hidden';
+          pathDiv.style.textOverflow = 'ellipsis';
+          pathDiv.style.whiteSpace = 'nowrap';
+          pathDiv.title = it.path;
+          pathDiv.textContent = it.path || '—';
+          
+          const sizeDiv = document.createElement('div');
+          sizeDiv.textContent = humanSize(it.size||0);
+          
+          const mtimeDiv = document.createElement('div');
+          mtimeDiv.style.fontSize = '13px';
+          mtimeDiv.textContent = it.mtime ? new Date(it.mtime).toLocaleString() : '—';
+          
+          const opDiv = document.createElement('div');
+          opDiv.appendChild(btn);
+          
+          row.appendChild(keyDiv);
+          row.appendChild(pathDiv);
+          row.appendChild(sizeDiv);
+          row.appendChild(mtimeDiv);
+          row.appendChild(opDiv);
+          
+          rowsBox.appendChild(row);
+        }
+        
+        // 添加LOG文件
+        for (const [key, info] of Object.entries(logs)){
+          const row = document.createElement('div');
+          row.className = 't-row';
+          row.style.display = 'grid';
+          row.style.gridTemplateColumns = '200px 1fr 120px 180px 110px';
+          row.style.alignItems = 'center';
+          row.style.gap = '12px';
+          row.style.padding = '0 16px';
+          
+          const btn = document.createElement('button');
+          btn.className = 'btn primary';
+          btn.textContent = '下载';
+          btn.style.padding = '8px 18px';
+          btn.style.fontSize = '14px';
+          btn.disabled = !info.exists;
+          btn.onclick = ()=>{ window.location.href = '/api/download/log?key=' + encodeURIComponent(key); };
+          
+          const keyDiv = document.createElement('div');
+          keyDiv.innerHTML = `📝 日志<br/><span style="font-size:12px; color: var(--text-muted);">${key}</span>`;
+          
+          const pathDiv = document.createElement('div');
+          pathDiv.style.overflow = 'hidden';
+          pathDiv.style.textOverflow = 'ellipsis';
+          pathDiv.style.whiteSpace = 'nowrap';
+          pathDiv.title = info.path;
+          pathDiv.textContent = info.path || '—';
+          
+          const sizeDiv = document.createElement('div');
+          sizeDiv.textContent = humanSize(info.size||0);
+          
+          const mtimeDiv = document.createElement('div');
+          mtimeDiv.style.fontSize = '13px';
+          mtimeDiv.textContent = info.mtime ? new Date(info.mtime).toLocaleString() : '—';
+          
+          const opDiv = document.createElement('div');
+          opDiv.appendChild(btn);
+          
+          row.appendChild(keyDiv);
+          row.appendChild(pathDiv);
+          row.appendChild(sizeDiv);
+          row.appendChild(mtimeDiv);
+          row.appendChild(opDiv);
+          
+          rowsBox.appendChild(row);
+        }
+      }catch(e){ console.error(e); }
+    }
+
+    const btnParsedSQL = document.getElementById('downloadParsedSQL');
+    const btnGeneratedMutator = document.getElementById('downloadGeneratedMutator');
+    const btnStructuralSQL = document.getElementById('downloadStructuralSQL');
+    const btnAll = document.getElementById('downloadAll');
+
+    btnPlot.addEventListener('click', ()=>{ window.location.href = '/api/download/plot_data'; });
+    btnZip.addEventListener('click', ()=>{ window.location.href = '/api/download/csv/zip'; });
+    
+    // 文件夹打包下载
+    btnParsedSQL.addEventListener('click', ()=>{ 
+      window.location.href = '/api/download/folder/parsed_sql'; 
+    });
+    btnGeneratedMutator.addEventListener('click', ()=>{ 
+      window.location.href = '/api/download/folder/generated_mutator'; 
+    });
+    btnStructuralSQL.addEventListener('click', ()=>{ 
+      window.location.href = '/api/download/folder/structural_sql'; 
+    });
+    btnAll.addEventListener('click', ()=>{ 
+      window.location.href = '/api/download/all'; 
+    });
+    
+    btnRefresh.addEventListener('click', ()=>{ refreshPlot(); refreshFiles(); });
+
+    refreshPlot();
+    refreshFiles();
+    
+    // 霓虹粒子特效 - 高密度可见版
+    (function() {
+      const canvas = document.getElementById('globalParticles');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      
+      const particles = [];
+      const N = Math.max(80, Math.floor((canvas.width * canvas.height) / 8000));
+      
+      const colors = [
+        { r: 0, g: 240, b: 255 },    // 霓虹青
+        { r: 139, g: 92, b: 246 },   // 霓虹紫
+        { r: 255, g: 0, b: 110 },    // 霓虹粉
+        { r: 0, g: 255, b: 159 }     // 霓虹绿
+      ];
+      
+      for (let i = 0; i < N; i++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 2 + 1,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          color: color,
+          alpha: Math.random() * 0.6 + 0.4,
+          phase: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.03 + 0.01
+        });
+      }
+      
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.phase += p.speed;
+          
+          if (p.x < -10) p.x = canvas.width + 10;
+          if (p.x > canvas.width + 10) p.x = -10;
+          if (p.y < -10) p.y = canvas.height + 10;
+          if (p.y > canvas.height + 10) p.y = -10;
+          
+          const glow = 0.6 + 0.4 * Math.sin(p.phase);
+          const glowRadius = p.r * 4 * glow;
+          
+          // 外层发光
+          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
+          grad.addColorStop(0, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * glow})`);
+          grad.addColorStop(0.4, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * glow * 0.5})`);
+          grad.addColorStop(1, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, 0)`);
+          
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 核心亮点
+          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * glow})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        requestAnimationFrame(animate);
+      }
+      
+      animate();
+      window.addEventListener('resize', () => {
+        resize();
+      });
+      
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,5 +1,19 @@
 const { createApp, onMounted, ref, reactive, watch, nextTick } = Vue;
 
+// 日志键名中文映射
+const logNameMap = {
+  'LLM_LOG_PATH': 'LLM日志',
+  'MAIN_LOG_PATH': '主日志',
+  'MUTATOR_FIXER_LOG_PATH': '修复日志',
+  'MUTATOR_GENERATOR_LOG_PATH': '生成器日志',
+  'PARSER_LOG_PATH': '解析器日志',
+  'STRUCTURAL_MUTATOR_LOG_PATH': '结构变异日志'
+};
+
+function getDisplayName(key) {
+  return logNameMap[key] || key;
+}
+
 createApp({
   setup(){
     const interval = ref(500);
@@ -259,6 +273,6 @@ createApp({
       });
     });
 
-    return { interval, maxLines, panels };
+    return { interval, maxLines, panels, getDisplayName };
   }
 }).mount('#app');

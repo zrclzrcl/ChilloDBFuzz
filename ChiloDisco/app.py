@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Tuple
 
-from flask import Flask, jsonify, render_template, send_from_directory, request
+from flask import Flask, jsonify, render_template, send_from_directory, request, send_file, abort
 
 # Try to import yaml, but provide a fallback parser if not available
 try:
@@ -114,6 +114,54 @@ def load_log_paths() -> Dict[str, str]:
         # Support paths like ./output/log/x.log or absolute
         if not os.path.isabs(p):
             # 以 code/ChiloMutate.py 所在目录为相对路径基准（若不存在则使用 code 目录）
+            p = os.path.normpath(os.path.join(RELATIVE_BASE, p))
+        abs_paths[k] = p
+    return abs_paths
+
+
+def load_csv_paths() -> Dict[str, str]:
+    """Load CSV file paths from config.yaml (CSV section). Returns absolute paths."""
+    rels: Dict[str, str] = {}
+    try:
+        if yaml is not None:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                cfg = yaml.safe_load(f) or {}
+            csvs = ((cfg or {}).get('CSV') or {})
+            if isinstance(csvs, dict):
+                rels = {k: str(v) for k, v in csvs.items()}
+        else:
+            # 简易解析：只针对 CSV 段的键值
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                in_csv = False
+                for raw in f:
+                    line = raw.rstrip('\n')
+                    if not in_csv:
+                        if line.strip().startswith('CSV'):
+                            in_csv = True
+                        continue
+                    if line.strip() == '' or (not line.startswith(' ') and not line.startswith('\t')):
+                        if rels:
+                            break
+                        else:
+                            continue
+                    parts = line.strip().split(':', 1)
+                    if len(parts) != 2:
+                        continue
+                    key, val = parts[0].strip(), parts[1].strip()
+                    if '#' in val:
+                        val = val.split('#', 1)[0].strip()
+                    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                        val = val[1:-1]
+                    rels[key] = val
+    except Exception:
+        rels = {}
+
+    abs_paths: Dict[str, str] = {}
+    for k, p in rels.items():
+        if not p:
+            continue
+        p = p.strip()
+        if not os.path.isabs(p):
             p = os.path.normpath(os.path.join(RELATIVE_BASE, p))
         abs_paths[k] = p
     return abs_paths
@@ -595,6 +643,253 @@ def api_plot():
 def plot_page():
     # 若存在前端工程构建产物（未来可将 plot 集成 SPA），此处仍回退到服务端模板页
     return render_template('plot.html')
+
+
+# ————— 下载页面与下载 API —————
+@app.route('/downloads')
+def downloads_page():
+    return render_template('downloads.html')
+
+
+@app.route('/api/download/plot_data')
+def download_plot_data():
+    path = _plotdata_path()
+    if not path or not os.path.exists(path):
+        return abort(404, description='plot_data 不存在')
+    # 使用 send_file 以附件形式下载
+    return send_file(path, as_attachment=True, download_name=os.path.basename(path))
+
+
+@app.route('/api/download/csv/list')
+def list_csvs():
+    csv_paths = load_csv_paths()
+    items = []
+    for k, p in csv_paths.items():
+        exists = os.path.exists(p)
+        items.append({
+            'key': k,
+            'path': p,
+            'exists': exists,
+            'size': os.path.getsize(p) if exists else 0,
+            'mtime': _file_mtime_iso(p) if exists else ''
+        })
+    return jsonify({'items': items})
+
+
+@app.route('/api/download/csv')
+def download_csv():
+    key = request.args.get('key') or ''
+    csv_paths = load_csv_paths()
+    if key not in csv_paths:
+        return abort(404, description='未知的 CSV key')
+    p = csv_paths[key]
+    if not p or not os.path.exists(p):
+        return abort(404, description='CSV 文件不存在')
+    return send_file(p, as_attachment=True, download_name=os.path.basename(p))
+
+
+@app.route('/api/download/log')
+def download_log():
+    key = request.args.get('key') or ''
+    log_paths = LOG_PATHS
+    if key not in log_paths:
+        return abort(404, description='未知的 LOG key')
+    p = log_paths[key]
+    if not p or not os.path.exists(p):
+        return abort(404, description='日志文件不存在')
+    return send_file(p, as_attachment=True, download_name=os.path.basename(p))
+
+
+@app.route('/api/download/csv/zip')
+def download_csv_zip():
+    import zipfile
+    buf = io.BytesIO()
+    csv_paths = load_csv_paths()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for k, p in csv_paths.items():
+            if p and os.path.exists(p):
+                arcname = os.path.basename(p) or (k + '.csv')
+                try:
+                    zf.write(p, arcname=arcname)
+                except Exception:
+                    # 如果写入失败，写入一个占位文本
+                    zf.writestr(arcname or (k + '.csv'), '')
+    buf.seek(0)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(buf, as_attachment=True, download_name=f'chilo_csv_{ts}.zip')
+
+
+def load_file_paths() -> Dict[str, str]:
+    """Load file paths from config.yaml (FILE_PATH section). Returns absolute paths."""
+    rels: Dict[str, str] = {}
+    try:
+        if yaml is not None:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                cfg = yaml.safe_load(f) or {}
+            file_paths = ((cfg or {}).get('FILE_PATH') or {})
+            if isinstance(file_paths, dict):
+                rels = {k: str(v) for k, v in file_paths.items()}
+        else:
+            # 简易解析
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                in_section = False
+                for raw in f:
+                    line = raw.rstrip('\n')
+                    if not in_section:
+                        if line.strip().startswith('FILE_PATH'):
+                            in_section = True
+                        continue
+                    if line.strip() == '' or (not line.startswith(' ') and not line.startswith('\t')):
+                        if rels:
+                            break
+                        else:
+                            continue
+                    parts = line.strip().split(':', 1)
+                    if len(parts) != 2:
+                        continue
+                    key, val = parts[0].strip(), parts[1].strip()
+                    if '#' in val:
+                        val = val.split('#', 1)[0].strip()
+                    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                        val = val[1:-1]
+                    rels[key] = val
+    except Exception:
+        rels = {}
+
+    abs_paths: Dict[str, str] = {}
+    for k, p in rels.items():
+        if not p:
+            continue
+        p = p.strip()
+        if not os.path.isabs(p):
+            p = os.path.normpath(os.path.join(RELATIVE_BASE, p))
+        abs_paths[k] = p
+    return abs_paths
+
+
+@app.route('/api/download/folder/parsed_sql')
+def download_parsed_sql():
+    import zipfile
+    file_paths = load_file_paths()
+    folder_path = file_paths.get('PARSED_SQL_PATH', '')
+    if not folder_path or not os.path.exists(folder_path):
+        return abort(404, description='ParsedSQL 文件夹不存在')
+    
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, folder_path)
+                try:
+                    zf.write(file_path, arcname=arcname)
+                except Exception:
+                    pass
+    buf.seek(0)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(buf, as_attachment=True, download_name=f'chilo_parsed_sql_{ts}.zip')
+
+
+@app.route('/api/download/folder/generated_mutator')
+def download_generated_mutator():
+    import zipfile
+    file_paths = load_file_paths()
+    folder_path = file_paths.get('GENERATED_MUTATOR_PATH', '')
+    if not folder_path or not os.path.exists(folder_path):
+        return abort(404, description='GeneratedMutator 文件夹不存在')
+    
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, folder_path)
+                try:
+                    zf.write(file_path, arcname=arcname)
+                except Exception:
+                    pass
+    buf.seek(0)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(buf, as_attachment=True, download_name=f'chilo_generated_mutator_{ts}.zip')
+
+
+@app.route('/api/download/folder/structural_sql')
+def download_structural_sql():
+    import zipfile
+    file_paths = load_file_paths()
+    folder_path = file_paths.get('STRUCTURAL_MUTATE_PATH', '')
+    if not folder_path or not os.path.exists(folder_path):
+        return abort(404, description='StructuralMutateSQL 文件夹不存在')
+    
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, folder_path)
+                try:
+                    zf.write(file_path, arcname=arcname)
+                except Exception:
+                    pass
+    buf.seek(0)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(buf, as_attachment=True, download_name=f'chilo_structural_sql_{ts}.zip')
+
+
+@app.route('/api/download/all')
+def download_all():
+    import zipfile
+    buf = io.BytesIO()
+    
+    # 获取所有路径
+    csv_paths = load_csv_paths()
+    log_paths = load_log_paths()
+    file_paths = load_file_paths()
+    
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        # CSV文件
+        for k, p in csv_paths.items():
+            if p and os.path.exists(p):
+                arcname = os.path.join('csv', os.path.basename(p))
+                try:
+                    zf.write(p, arcname=arcname)
+                except Exception:
+                    pass
+        
+        # 日志文件
+        for k, p in log_paths.items():
+            if p and os.path.exists(p):
+                arcname = os.path.join('logs', os.path.basename(p))
+                try:
+                    zf.write(p, arcname=arcname)
+                except Exception:
+                    pass
+        
+        # 文件夹
+        for folder_key in ['PARSED_SQL_PATH', 'GENERATED_MUTATOR_PATH', 'STRUCTURAL_MUTATE_PATH']:
+            folder_path = file_paths.get(folder_key, '')
+            if folder_path and os.path.exists(folder_path):
+                folder_name = os.path.basename(folder_path.rstrip('/\\'))
+                for root, dirs, files in os.walk(folder_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.join(folder_name, os.path.relpath(file_path, folder_path))
+                        try:
+                            zf.write(file_path, arcname=arcname)
+                        except Exception:
+                            pass
+        
+        # plot_data
+        plot_path = _plotdata_path()
+        if plot_path and os.path.exists(plot_path):
+            try:
+                zf.write(plot_path, arcname=os.path.join('plot', os.path.basename(plot_path)))
+            except Exception:
+                pass
+    
+    buf.seek(0)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(buf, as_attachment=True, download_name=f'chilo_all_output_{ts}.zip')
 
 
 if __name__ == '__main__':

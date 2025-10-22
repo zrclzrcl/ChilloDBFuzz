@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ChiloDisco · Chilo Plot</title>
+  <title>ChiloDisco · 数据大屏</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
+  <canvas id="globalParticles"></canvas>
   <div id="app" class="layout">
     <aside class="sidenav">
       <div class="nav-brand">
@@ -18,16 +19,17 @@
         <span class="title">ChiloDisco</span>
       </div>
       <nav class="nav-links">
-        <a href="/">日志面板</a>
-        <a class="active" href="/plot">Chilo Plot</a>
-        <a href="#">设置（预留）</a>
+        <a href="/">日志监控</a>
+        <a class="active" href="/plot">数据大屏</a>
+        <a href="/downloads">结果下载</a>
+        <a href="#">系统设置</a>
       </nav>
     </aside>
 
     <div class="content">
       <header class="app-header">
         <div class="brand">
-          <span class="subtitle">AFL++ · 实时数据大屏</span>
+          <span class="subtitle">AFL++ · 数据可视化大屏</span>
         </div>
         <div class="controls" style="gap:12px">
           <label>刷新频率</label>
@@ -39,15 +41,15 @@
             <option value="2000">2s</option>
             <option value="5000">5s</option>
           </select>
-          <span id="dataPath" style="color:var(--muted); font-size:12px"></span>
+          <span id="dataPath" style="color:var(--text-muted); font-size:13px"></span>
         </div>
       </header>
 
-      <main id="mainGrid" class="grid" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1.2fr 0.9fr 0.9fr 1fr; height: calc(100vh - 140px); min-height: 0;">
+      <main id="mainGrid" class="grid" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1.2fr 0.9fr 0.9fr 1fr; height: calc(100vh - 140px); min-height: 0; overflow: visible; padding: 20px;">
         <!-- 第1行：折线图，横跨两列 -->
         <section class="card" style="grid-column: 1 / span 2;">
           <header class="card-header">
-            <div class="name">折线图 · 相对时间</div>
+            <div class="name">实时数据曲线</div>
             <div class="file" id="plot-meta"></div>
           </header>
           <div id="lineChart" style="width:100%; height:100%;"></div>
@@ -69,41 +71,56 @@
           <div id="gauge3" style="width:100%; height:100%;"></div>
         </section>
         <section class="card">
-          <header class="card-header"><div class="name">最新指标</div></header>
-          <div class="stats-mini" style="display:grid; grid-template-columns: 1fr; grid-auto-rows: minmax(0,1fr); gap: 10px; height: calc(100% - 56px); padding: 12px;">
-            <div class="stat" id="s_cycles" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
-              <div style="color:var(--muted); font-size:11px">cycles_done</div>
-              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(0,255,209,0.35)">—</div>
+          <header class="card-header"><div class="name">实时指标</div></header>
+          <div class="stats-compact" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 12px; height: calc(100% - 56px); padding: 16px;">
+            <div class="stat-compact" id="s_cycles">
+              <div class="stat-icon">🔄</div>
+              <div class="stat-content">
+                <div class="stat-label">Cycles</div>
+                <div class="stat-value">—</div>
+              </div>
             </div>
-            <div class="stat" id="s_cur_item" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
-              <div style="color:var(--muted); font-size:11px">cur_item</div>
-              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(124,92,255,0.35)">—</div>
+            <div class="stat-compact" id="s_cur_item">
+              <div class="stat-icon">📌</div>
+              <div class="stat-content">
+                <div class="stat-label">Current</div>
+                <div class="stat-value">—</div>
+              </div>
             </div>
-            <div class="stat" id="s_saved_crashes" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
-              <div style="color:var(--muted); font-size:11px">saved_crashes</div>
-              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(255,120,90,0.4)">—</div>
+            <div class="stat-compact" id="s_saved_crashes">
+              <div class="stat-icon">💥</div>
+              <div class="stat-content">
+                <div class="stat-label">Crashes</div>
+                <div class="stat-value stat-danger">—</div>
+              </div>
             </div>
-            <div class="stat" id="s_max_depth" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
-              <div style="color:var(--muted); font-size:11px">max_depth</div>
-              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(255,200,80,0.35)">—</div>
+            <div class="stat-compact" id="s_max_depth">
+              <div class="stat-icon">📏</div>
+              <div class="stat-content">
+                <div class="stat-label">Depth</div>
+                <div class="stat-value">—</div>
+              </div>
             </div>
-            <div class="stat" id="s_total_execs" style="background:var(--panel); border:1px solid rgba(124,92,255,0.25); border-radius:10px; padding:10px;">
-              <div style="color:var(--muted); font-size:11px">total_execs</div>
-              <div class="val" style="font-size:20px; font-weight:700; text-shadow:0 0 8px rgba(0,255,209,0.3)">—</div>
+            <div class="stat-compact" id="s_total_execs" style="grid-column: 1 / -1;">
+              <div class="stat-icon">🎯</div>
+              <div class="stat-content">
+                <div class="stat-label">Total Execs</div>
+                <div class="stat-value">—</div>
+              </div>
             </div>
           </div>
         </section>
 
         <!-- 第4行：.cur_input 展示大卡片，横跨两列 -->
-        <section class="card" id="curCard" style="grid-column: 1 / span 2; transition: box-shadow .6s ease, border-color .6s ease; border:1px solid rgba(0,255,209,0.35);">
+        <section class="card" id="curCard" style="grid-column: 1 / span 2; transition: box-shadow .6s ease, border-color .6s ease;">
           <header class="card-header">
-            <div class="name">当前输入 · .cur_input</div>
+            <div class="name">当前输入样本</div>
             <div class="file" id="curMeta">（等待数据…）</div>
             <div class="meta">
               <span class="mtime" id="curTimer" title="当前内容持续时间">—</span>
             </div>
           </header>
-          <div id="curContent" style="height: calc(100% - 56px); padding: 12px; overflow-x: hidden; overflow-y: auto; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; line-height: 1.35; font-size: 14px; column-gap: 24px; column-fill: auto; -webkit-column-fill: auto; column-rule: 1px solid rgba(124,92,255,0.2);">
+          <div id="curContent" style="height: calc(100% - 56px); padding: 16px; overflow-x: hidden; overflow-y: auto; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; line-height: 1.5; font-size: 13px; column-gap: 24px; column-fill: auto; -webkit-column-fill: auto; column-rule: 1px solid var(--border-light); background: var(--bg-secondary);">
             （空）
           </div>
         </section>
@@ -111,8 +128,8 @@
 
       <footer class="app-footer">
         <div class="legend">
-          <span>说明：</span>
-          <span>折线：map_size(%), edges_found, corpus_count；仪表：pending_total, pending_favs, execs_per_sec</span>
+          <span>数据说明：</span>
+          <span>折线图：map_size, edges_found, corpus_count | 仪表盘：pending_total, pending_favs, execs_per_sec</span>
         </div>
         <div class="copyright">© 2025 ChiloDisco</div>
       </footer>
@@ -120,24 +137,30 @@
   </div>
 
   <script>
-    // 统一更美观的 ECharts 主题（霓虹深色），替换默认外观
+    // 霓虹赛博朋克 ECharts 主题
     echarts.registerTheme('chiloNeon', {
-      color: ['#00ffd1','#7c5cff','#ffd166','#ef476f','#06d6a0','#118ab2'],
+      color: ['#00f0ff','#8b5cf6','#ff006e','#00ff9f','#ffed4e'],
       backgroundColor: 'transparent',
-      textStyle: { fontFamily: 'JetBrains Mono, monospace', color: '#cfe3ff' },
+      textStyle: { fontFamily: 'JetBrains Mono, Noto Sans SC, monospace', color: '#e0e7ff' },
       grid: { containLabel: true },
-      tooltip: { backgroundColor: 'rgba(12,18,28,0.95)', borderColor: 'rgba(124,92,255,0.35)', textStyle:{ color:'#d8e6ff' } },
+      tooltip: { 
+        backgroundColor: 'rgba(19,24,36,0.95)', 
+        borderColor: 'rgba(0,240,255,0.5)',
+        borderWidth: 2,
+        textStyle:{ color: '#e0e7ff' },
+        extraCssText: 'box-shadow: 0 0 20px rgba(0,240,255,0.4); backdrop-filter: blur(10px);'
+      },
       categoryAxis: {
-        axisLine: { lineStyle: { color: 'rgba(124,92,255,0.45)' }},
-        axisLabel: { color: '#8aa2c2' },
+        axisLine: { lineStyle: { color: 'rgba(0,240,255,0.3)' }},
+        axisLabel: { color: '#6b7280' },
         splitLine: { show: false }
       },
       valueAxis: {
-        axisLine: { lineStyle: { color: 'rgba(124,92,255,0.45)' }},
-        axisLabel: { color: '#8aa2c2' },
-        splitLine: { lineStyle: { color: 'rgba(124,92,255,0.15)' }}
+        axisLine: { lineStyle: { color: 'rgba(0,240,255,0.3)' }},
+        axisLabel: { color: '#6b7280' },
+        splitLine: { lineStyle: { color: 'rgba(139,92,246,0.15)' }}
       },
-      legend: { textStyle: { color: '#cfe3ff' } }
+      legend: { textStyle: { color: '#e0e7ff' } }
     });
 
     const intervalSel = document.getElementById('intervalSel');
@@ -148,7 +171,7 @@
     let timer = null;
     let interval = parseInt(intervalSel.value, 10) || 100;
 
-    // 使用自定义主题初始化
+    // 使用霓虹赛博朋克主题初始化
     const lineChart = echarts.init(document.getElementById('lineChart'), 'chiloNeon');
     const gauge1 = echarts.init(document.getElementById('gauge1'), 'chiloNeon');
     const gauge2 = echarts.init(document.getElementById('gauge2'), 'chiloNeon');
@@ -181,7 +204,7 @@
       mainGrid.style.height = `calc(100vh - ${headerFooter}px)`;
 
       if (mqLandscape.matches){
-        // 横屏：第1行更高并放置“折线图 + 最新指标”；第2行三仪表盘更紧凑；第3行 .cur_input 占满
+        // 横屏：第1行更高并放置"折线图 + 最新指标"；第2行三仪表盘更紧凑；第3行 .cur_input 占满
         mainGrid.style.gridTemplateColumns = '1fr 1fr 1fr';
         if (aspect >= 2.0){
           // 超宽横屏：显著抬高第1行，适当压缩仪表盘行
@@ -223,11 +246,20 @@
     mqLandscape.addEventListener ? mqLandscape.addEventListener('change', applyLayout) : mqLandscape.addListener(applyLayout);
 
     // 保持用户图例选择状态，避免刷新后被重置；并在点击后短暂停止轮询，防止刷新抢占
+    // 使用 localStorage 持久化图例选择
     let legendSelected = null;
+    try {
+      const saved = localStorage.getItem('chiloPlotLegendSelected');
+      if (saved) legendSelected = JSON.parse(saved);
+    } catch(_) {}
+    
     let pauseUntil = 0;
     lineChart.on('legendselectchanged', (e) => {
       legendSelected = Object.assign({}, e.selected);
-      pauseUntil = Date.now() + 600; // 600ms 交互保护时间
+      try {
+        localStorage.setItem('chiloPlotLegendSelected', JSON.stringify(legendSelected));
+      } catch(_) {}
+      pauseUntil = Date.now() + 1000; // 1000ms 交互保护时间，增加到1秒
     });
 
     // 半圆仪表盘配置，更具美感
@@ -235,11 +267,11 @@
       const v = Number.isFinite(val) ? val : 0;
       const m = Math.max(1, maxVal || 100);
       const sc = Number.isFinite(scale) ? scale : 1.0;
-      const colors = colorStops || [[0.3, '#00ffd1'], [0.7, '#ffd166'], [1, '#ef476f']];
+      const colors = colorStops || [[0.3, '#00f0ff'], [0.7, '#8b5cf6'], [1, '#ff006e']];
       const axisW = Math.round(14 * sc);
       const ptrW  = Math.max(3, Math.round(4 * sc));
-      const fz    = Math.round(26 * sc);
-      const titleFz = Math.round(12 * sc);
+      const fz    = Math.round(28 * sc);
+      const titleFz = Math.round(13 * sc);
       return {
         animationDurationUpdate: 300,
         series: [{
@@ -251,17 +283,17 @@
           min: 0,
           max: m,
           splitNumber: 5,
-          pointer: { show: true, length: '62%', width: ptrW, itemStyle: { color: '#e5f1ff' } },
-          progress: { show: true, overlap: false, roundCap: true, clip: false, itemStyle: { color: '#7c5cff' } },
+          pointer: { show: true, length: '62%', width: ptrW, itemStyle: { color: '#00f0ff' } },
+          progress: { show: true, overlap: false, roundCap: true, clip: false, itemStyle: { color: '#00f0ff' } },
           axisLine: { lineStyle: { width: axisW, color: colors }},
           axisTick: { show: false },
           splitLine: { show: false },
           axisLabel: { show: false },
-          title: { show: true, color: '#9fb6d8', fontSize: titleFz, offsetCenter: [0,'70%'] },
+          title: { show: true, color: '#00f0ff', fontSize: titleFz, offsetCenter: [0,'70%'] },
           detail: {
             valueAnimation: true,
             fontSize: fz,
-            color: '#d0e0ff',
+            color: '#00f0ff',
             offsetCenter: [0, sc > 1 ? '30%' : '35%'],
             formatter: (x) => unit ? `${x}${unit}` : `${x}`
           },
@@ -312,19 +344,31 @@
       // 更美观的折线：面积渐变 + 光晕 + 平滑动画；保留用户图例选择
       const opt = {
         backgroundColor: 'transparent',
-        grid: { left: 50, right: 24, top: 30, bottom: 64 },
+        grid: { left: 60, right: 60, top: 50, bottom: 80 },
         animation: true,
         animationDuration: 600,
         animationEasing: 'quadraticOut',
         axisPointer: { link: [{ xAxisIndex: 'all' }], label: { backgroundColor: 'rgba(20,26,36,0.9)' } },
         tooltip: { trigger: 'axis', axisPointer: { type: 'line' } },
-        legend: { data: ['map_size(%)','edges_found','corpus_count'], selected: legendSelected || undefined, top: null, bottom: 0, left: 'center', itemWidth: 32, itemHeight: 20, itemGap: 20, selectedMode: 'multiple', textStyle: { fontSize: 15, color: '#cfe3ff' } },
+        legend: { 
+          data: ['map_size(%)','edges_found','corpus_count'], 
+          selected: legendSelected || undefined, 
+          top: null, 
+          bottom: 15, 
+          left: 'center', 
+          itemWidth: 40, 
+          itemHeight: 24, 
+          itemGap: 30, 
+          selectedMode: 'multiple', 
+          textStyle: { fontSize: 16, color: '#2d2d2d', fontWeight: 500 },
+          padding: [10, 20]
+        },
         xAxis: {
           type: 'value',
           min: 'dataMin',
           max: 'dataMax',
           boundaryGap: false,
-          axisLabel: { color: '#8aa2c2' },
+          axisLabel: { color: '#6b6b6b' },
           splitLine: { show: false }
         },
         yAxis: [
@@ -384,22 +428,22 @@
         series: [
           {
             name: 'map_size(%)', type: 'line', yAxisIndex: 0, smooth: true, showSymbol: false, data: t.map((ti,i)=>[ti, map_size[i]]),
-            lineStyle:{ color:'#00ffd1', width: 2 },
+            lineStyle:{ color:'#00f0ff', width: 3 },
             areaStyle:{
               opacity: 0.25,
-              color: new echarts.graphic.LinearGradient(0,0,0,1,[{ offset:0, color:'rgba(0,255,209,0.35)'},{ offset:1, color:'rgba(0,255,209,0.02)'}])
+              color: new echarts.graphic.LinearGradient(0,0,0,1,[{ offset:0, color:'rgba(0,240,255,0.4)'},{ offset:1, color:'rgba(0,240,255,0.05)'}])
             },
             emphasis: { focus: 'series' }
           },
           {
             name: 'edges_found', type: 'line', yAxisIndex: 1, smooth: true, showSymbol: false, data: t.map((ti,i)=>[ti, edges_found[i]]),
-            lineStyle:{ color:'#7c5cff', width: 2 },
-            areaStyle:{ opacity: 0.20, color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(124,92,255,0.35)'},{offset:1,color:'rgba(124,92,255,0.02)'}]) }
+            lineStyle:{ color:'#8b5cf6', width: 3 },
+            areaStyle:{ opacity: 0.25, color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(139,92,246,0.4)'},{offset:1,color:'rgba(139,92,246,0.05)'}]) }
           },
           {
             name: 'corpus_count', type: 'line', yAxisIndex: 2, smooth: true, showSymbol: false, data: t.map((ti,i)=>[ti, corpus_count[i]]),
-            lineStyle:{ color:'#ffd166', width: 2 },
-            areaStyle:{ opacity: 0.18, color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,209,102,0.35)'},{offset:1,color:'rgba(255,209,102,0.02)'}]) }
+            lineStyle:{ color:'#ff006e', width: 3 },
+            areaStyle:{ opacity: 0.25, color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,0,110,0.4)'},{offset:1,color:'rgba(255,0,110,0.05)'}]) }
           }
         ]
       };
@@ -437,9 +481,9 @@
       const sc3 = gaugeScaleFor(g3Card);
       gauge1.setOption(gaugeOption('pending_total', latest('pending_total'), Math.max(10, latest('pending_total')*1.6), undefined, '', sc1));
       gauge2.setOption(gaugeOption('pending_favs', latest('pending_favs'), Math.max(10, latest('pending_favs')*1.6), undefined, '', sc2));
-      gauge3.setOption(gaugeOption('execs_per_sec', latest('execs_per_sec'), Math.max(50, latest('execs_per_sec')*1.6), [[0.3,'#ffd166'],[0.7,'#06d6a0'],[1,'#118ab2']], '', sc3));
+      gauge3.setOption(gaugeOption('execs_per_sec', latest('execs_per_sec'), Math.max(50, latest('execs_per_sec')*1.6), [[0.3,'#00ff9f'],[0.7,'#00f0ff'],[1,'#8b5cf6']], '', sc3));
 
-      const setStat = (id, val) => { const el = document.querySelector('#'+id+' .val'); if (el) el.textContent = (val ?? '—'); };
+      const setStat = (id, val) => { const el = document.querySelector('#'+id+' .stat-value'); if (el) el.textContent = (val ?? '—'); };
       setStat('s_cycles', latest('cycles_done'));
       setStat('s_cur_item', latest('cur_item'));
       setStat('s_saved_crashes', latest('saved_crashes'));
@@ -467,15 +511,14 @@
         cont.style.columnCount = cols;
         cont.innerText = txt || '（空）';
 
-        // 边框与发光：时间越久越红、越亮
+        // 边框与发光：时间越久越红、越亮（日式简约版 - 降低效果）
         const age = Math.max(0, cur.since_sec||0);
         const h = hueForAge(age);
         const glow = growGlow(age);
-        const border = `hsl(${h}, 95%, 55%)`;
-        const outer = `0 0 ${Math.round(glow.blur*1.6)}px hsla(${h}, 95%, 60%, ${glow.alpha})`;
-        const inner = `inset 0 0 ${Math.round(glow.blur)}px hsla(${h}, 90%, 55%, ${Math.min(1, glow.alpha*0.8)})`;
+        const border = `hsl(${h}, 40%, 65%)`;
+        const outer = `0 0 ${Math.round(glow.blur*0.5)}px hsla(${h}, 40%, 55%, ${glow.alpha*0.3})`;
         card.style.borderColor = border;
-        card.style.boxShadow = `${outer}, ${inner}`;
+        card.style.boxShadow = outer;
       }
     }
 
@@ -497,6 +540,90 @@
     applyLayout();
     fetchPlot();
     start();
+    
+    // 霓虹粒子特效 - 高密度可见版
+    (function() {
+      const canvas = document.getElementById('globalParticles');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      
+      const particles = [];
+      const N = Math.max(80, Math.floor((canvas.width * canvas.height) / 8000));
+      
+      const colors = [
+        { r: 0, g: 240, b: 255 },    // 霓虹青
+        { r: 139, g: 92, b: 246 },   // 霓虹紫
+        { r: 255, g: 0, b: 110 },    // 霓虹粉
+        { r: 0, g: 255, b: 159 }     // 霓虹绿
+      ];
+      
+      for (let i = 0; i < N; i++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 2 + 1,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          color: color,
+          alpha: Math.random() * 0.6 + 0.4,
+          phase: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.03 + 0.01
+        });
+      }
+      
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.phase += p.speed;
+          
+          if (p.x < -10) p.x = canvas.width + 10;
+          if (p.x > canvas.width + 10) p.x = -10;
+          if (p.y < -10) p.y = canvas.height + 10;
+          if (p.y > canvas.height + 10) p.y = -10;
+          
+          const glow = 0.6 + 0.4 * Math.sin(p.phase);
+          const glowRadius = p.r * 4 * glow;
+          
+          // 外层发光
+          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius);
+          grad.addColorStop(0, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * glow})`);
+          grad.addColorStop(0.4, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * glow * 0.5})`);
+          grad.addColorStop(1, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, 0)`);
+          
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 核心亮点
+          ctx.fillStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${p.alpha * glow})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        requestAnimationFrame(animate);
+      }
+      
+      animate();
+      window.addEventListener('resize', () => {
+        resize();
+      });
+      
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    })();
   </script>
 </body>
 </html>

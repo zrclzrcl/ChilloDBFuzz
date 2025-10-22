@@ -6,16 +6,17 @@
         <span class="title">ChiloDisco</span>
       </div>
       <nav class="nav-links">
-        <a class="active" href="/">日志面板</a>
-        <a href="/plot">Chilo Plot</a>
-        <a href="#">设置（预留）</a>
+        <a class="active" href="/">日志监控</a>
+        <a href="/plot">数据大屏</a>
+        <a href="/downloads">结果下载</a>
+        <a href="#">系统设置</a>
       </nav>
     </aside>
 
     <div class="content">
       <header class="app-header">
         <div class="brand">
-          <span class="subtitle">AFL++ Custom Mutator · Live Logs</span>
+          <span class="subtitle">AFL++ Custom Mutator · 实时日志监控</span>
         </div>
         <div class="controls">
           <label>刷新频率</label>
@@ -27,7 +28,7 @@
             <option :value="5000">5s</option>
             <option :value="10000">10s</option>
           </select>
-          <label>每个Log最大行数</label>
+          <label>显示行数</label>
           <select v-model.number="maxLines">
             <option :value="200">200</option>
             <option :value="300">300</option>
@@ -40,31 +41,29 @@
       <main class="grid">
         <section class="card" v-for="panel in panels" :key="panel.key" :style="{ '--h': panel.hue }">
           <header class="card-header">
-            <div class="name">{{ panel.key }}</div>
+            <div class="name">{{ getDisplayName(panel.key) }}</div>
             <div class="file">{{ panel.filename }}</div>
             <div class="meta">
-              <span class="mtime" title="最近修改时间">{{ panel.mtimeText }}</span>
-              <span class="size" title="文件大小">{{ panel.sizeText }}</span>
+              <span class="mtime" :title="'最近修改：' + panel.mtimeText">{{ panel.mtimeText }}</span>
+              <span class="size" :title="'大小：' + panel.sizeText">{{ panel.sizeText }}</span>
               <span class="recency-dot" :title="'新鲜度：' + panel.bucketLabel" :style="{ color: panel.accent }"></span>
             </div>
           </header>
-          <pre class="log-body">
-            <code class="log-lines" v-html="panel.html"></code>
-          </pre>
+          <pre class="log-body"><code class="log-lines" v-html="panel.html"></code></pre>
         </section>
       </main>
 
       <footer class="app-footer">
         <div class="legend">
-          <span>新鲜度：</span>
-          <span class="legend-dot" style="--h:140">0–2秒</span>
-          <span class="legend-dot" style="--h:105">2–5秒</span>
-          <span class="legend-dot" style="--h:80">5–10秒</span>
-          <span class="legend-dot" style="--h:60">10–20秒</span>
-          <span class="legend-dot" style="--h:40">20–40秒</span>
-          <span class="legend-dot" style="--h:25">40–60秒</span>
-          <span class="legend-dot" style="--h:12">60–90秒</span>
-          <span class="legend-dot" style="--h:0">≥90秒</span>
+          <span>数据新鲜度：</span>
+          <span class="legend-dot" style="--h:140">0–2s</span>
+          <span class="legend-dot" style="--h:105">2–5s</span>
+          <span class="legend-dot" style="--h:80">5–10s</span>
+          <span class="legend-dot" style="--h:60">10–20s</span>
+          <span class="legend-dot" style="--h:40">20–40s</span>
+          <span class="legend-dot" style="--h:25">40–60s</span>
+          <span class="legend-dot" style="--h:12">60–90s</span>
+          <span class="legend-dot" style="--h:0">≥90s</span>
         </div>
         <div class="copyright">© 2025 ChiloDisco</div>
       </footer>
@@ -79,6 +78,20 @@ const interval = ref(2000)
 const maxLines = ref(500)
 const panels = reactive([])
 let timer = null
+
+// 日志键名中文映射
+const logNameMap = {
+  'LLM_LOG_PATH': 'LLM日志',
+  'MAIN_LOG_PATH': '主日志',
+  'MUTATOR_FIXER_LOG_PATH': '修复日志',
+  'MUTATOR_GENERATOR_LOG_PATH': '生成器日志',
+  'PARSER_LOG_PATH': '解析器日志',
+  'STRUCTURAL_MUTATOR_LOG_PATH': '结构变异日志'
+}
+
+function getDisplayName(key) {
+  return logNameMap[key] || key
+}
 
 // —— 滚动 & 首次看到时间（会话级）持久化 ——
 const STICK_KEY_PREFIX = 'cd_stick_'
