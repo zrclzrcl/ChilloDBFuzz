@@ -7,6 +7,26 @@ createApp({
     const panels = reactive([]);
     let timer = null;
 
+    // —— 滚动 & 首次看到时间 持久化辅助 ——
+    const STICK_KEY_PREFIX = 'cd_stick_';
+    const FS_KEY_PREFIX = 'cd_fs_';
+
+    function getStick(key){
+      try{ const v = sessionStorage.getItem(STICK_KEY_PREFIX + key); return v === null ? true : v === '1'; }catch(_){ return true; }
+    }
+    function setStick(key, val){
+      try{ sessionStorage.setItem(STICK_KEY_PREFIX + key, val ? '1' : '0'); }catch(_){ /* ignore */ }
+    }
+    function loadFS(key){
+      try{ const s = sessionStorage.getItem(FS_KEY_PREFIX + key); return s ? JSON.parse(s) : {}; }catch(_){ return {}; }
+    }
+    function saveFS(key, obj){
+      try{ sessionStorage.setItem(FS_KEY_PREFIX + key, JSON.stringify(obj)); }catch(_){ /* ignore */ }
+    }
+
+    function isAtBottom(el){ if(!el) return true; return (el.scrollHeight - el.scrollTop - el.clientHeight) <= 8; }
+    function scrollToBottom(el){ if(!el) return; el.scrollTop = el.scrollHeight; }
+
     const tsRegex = /(\b\d{4}[-\/]\d{2}[-\/]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?\b)|(\b\d{2}:\d{2}:\d{2}\b)/g;
 
     function hueForAge(ageSec){
@@ -114,8 +134,31 @@ createApp({
       for (const k of keys){
         const old = map.get(k);
         next.push(old ?? { key:k, filename:'', hue:120, accent:'hsl(120 100% 55%)', bucketLabel:'', mtimeText:'—', sizeText:'—', html:'(加载中...)', visibleRows: null });
+        // 初始化默认“跟随底部”
+        if (getStick(k) === null) setStick(k, true);
       }
       panels.splice(0, panels.length, ...next);
+    }
+
+    function bindScrollHandlers(){
+      const scrollers = document.querySelectorAll('pre.log-body');
+      scrollers.forEach((el, idx) => {
+        // 避免重复绑定
+        if (el.__cd_bound) return;
+        el.__cd_bound = true;
+        el.addEventListener('scroll', () => {
+          const p = panels[idx];
+          if (!p) return;
+          const stick = isAtBottom(el);
+          setStick(p.key, stick);
+        }, { passive: true });
+      });
+      // 初始若设置为跟随底部，则滚到底
+      scrollers.forEach((el, idx) => {
+        const p = panels[idx];
+        if (!p) return;
+        if (getStick(p.key)) scrollToBottom(el);
+      });
     }
 
 
@@ -124,10 +167,26 @@ createApp({
         const r = await fetch('/api/logs?t='+Date.now(), { cache:'no-store' });
         const data = await r.json();
         const now = new Date(data.now);
+        const nowIso = data.now;
         const logs = data.logs || {};
         rebuildPanelsFromLogs(logs);
         await nextTick();
-        for (const panel of panels){
+
+        // 渲染前记录各面板滚动状态
+        const scrollers = document.querySelectorAll('pre.log-body');
+        const prevStates = panels.map((p, i) => {
+          const el = scrollers[i];
+          return {
+            key: p.key,
+            el,
+            top: el ? el.scrollTop : 0,
+            height: el ? el.scrollHeight : 0,
+            wasAtBottom: isAtBottom(el),
+            stick: getStick(p.key)
+          };
+        });
+
+        for (const [idx, panel] of panels.entries()){
           const info = logs[panel.key];
           if (!info) continue;
           panel.filename = (info.path || '').split(/[/\\]/).pop() || '';
@@ -145,11 +204,38 @@ createApp({
           panel.accent = `hsl(${hue} 100% 55%)`;
           panel.bucketLabel = bucketLabel(ageSec);
 
+          // 客户端 first-seen 时间缓存，增强逐行颜色的稳定性（跨页面返回时也生效）
           const all = Array.isArray(info.lines) ? info.lines : [];
           const sliced = all.slice(-Math.min(all.length, maxLines.value));
-          const html = sliced.map(obj => colorizeLineObj(obj, hue, now)).join('\n');
+          const fs = loadFS(panel.key);
+          const enriched = sliced.map(o => {
+            let t = o.t;
+            if (!t){ t = fs[o.s] || nowIso; fs[o.s] = t; }
+            return { s: o.s, t };
+          });
+          // 保存当前窗口的映射，限制体积
+          const newFS = {};
+          for (const row of enriched){ newFS[row.s] = row.t; }
+          saveFS(panel.key, newFS);
+
+          const html = enriched.map(obj => colorizeLineObj(obj, hue, now)).join('\n');
           panel.html = html || '<span style="color:#7a8aa3">(空)</span>';
         }
+
+        await nextTick();
+        // 根据 stickBottom 或是否已经在底部，调整滚动位置
+        const scrollersAfter = document.querySelectorAll('pre.log-body');
+        prevStates.forEach((st, i) => {
+          const el = scrollersAfter[i];
+          if (!el) return;
+          if (st.stick || st.wasAtBottom){
+            scrollToBottom(el);
+          } else {
+            el.scrollTop = st.top || 0;
+          }
+        });
+
+        bindScrollHandlers();
       }catch(e){
         console.error('fetch logs error', e);
       }

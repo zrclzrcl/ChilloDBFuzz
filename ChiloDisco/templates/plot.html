@@ -306,7 +306,7 @@
       const edges_found = s.edges_found || [];
       const corpus_count = s.corpus_count || [];
 
-      dataPathEl.textContent = meta.path ? ('文件：' + meta.path) : '未找到 plotdata';
+      dataPathEl.textContent = meta.path ? ('文件：' + meta.path) : '未找到 plot_data';
       metaEl.textContent = meta.exists ? (new Date(meta.mtime).toLocaleString() + ' · ' + (meta.size||0) + 'B') : '等待数据…';
 
       // 更美观的折线：面积渐变 + 光晕 + 平滑动画；保留用户图例选择

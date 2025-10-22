@@ -2,7 +2,7 @@ import os
 import io
 import time
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Tuple
 
 from flask import Flask, jsonify, render_template, send_from_directory, request
@@ -187,33 +187,57 @@ def api_logs():
         # 为每一行附加首次看到的时间戳（没有行内时间戳时用于前端着色）
         state = LOG_STATE.get(key) or {}
         prev_ts: List[str] = state.get('ts', []) or []
-        prev_lines: List[str] = state.get('lines', []) or []
+        prev_hashes: List[str] = state.get('hashes', []) or []
         prev_len = len(prev_ts)
         cur_len = len(lines)
 
+        # 计算当前行的内容哈希（稳定对齐：按内容复用时间戳）
+        def _hash_line(s: str) -> str:
+            try:
+                b = s.encode('utf-8', errors='replace')
+            except Exception:
+                b = (s or '').encode('utf-8', errors='replace')
+            return _hash_bytes(b)
+
+        cur_hashes: List[str] = [ _hash_line(s) for s in lines ]
+
         if cur_len == 0:
             ts_list: List[str] = []
-        elif prev_len == 0 or not prev_lines:
-            # 首次或没有历史，全部视为新
-            ts_list = [now_iso] * cur_len
+        elif prev_len == 0 or not prev_hashes:
+            # 首次或没有历史：为避免“整体同色”，按行序分配递进时间戳（越靠后越新）
+            delta = 0.8  # 每行间隔秒数
+            ts_list = []
+            for i in range(cur_len):
+                age = (cur_len - 1 - i) * delta
+                t_i = (now_dt - timedelta(seconds=age)).isoformat()
+                ts_list.append(t_i)
         else:
-            # 尝试用“最长后缀重叠”对齐，解决滑窗且行数不变时新行误用旧时间的问题
-            max_check = min(prev_len, cur_len, 200)
-            k = 0  # 重叠长度
-            # 从大到小寻找 prev_lines 的后缀与当前 lines 的后缀重叠
-            for chk in range(max_check, 0, -1):
-                if prev_lines[-chk:] == lines[-chk:]:
-                    k = chk
-                    break
-            if k > 0:
-                # 继承重叠部分的时间戳，新增部分赋予 now
-                ts_list = prev_ts[-k:] + [now_iso] * (cur_len - k)
-            else:
-                # 无法可靠对齐（如截断/轮转/内容完全变化），全部视为新
-                ts_list = [now_iso] * cur_len
+            # 基于内容哈希的多重匹配复用：为每个哈希构建时间戳队列，按出现顺序消费
+            from collections import defaultdict, deque
+            buckets = defaultdict(deque)
+            for h, t in zip(prev_hashes, prev_ts):
+                buckets[h].append(t)
+            ts_list = []
+            reused = 0
+            for h in cur_hashes:
+                if buckets[h]:
+                    ts_list.append(buckets[h].popleft())
+                    reused += 1
+                else:
+                    ts_list.append(now_iso)
+            # 如对齐效果极差（例如日志轮转/重写），避免“整体同色 now”，退回阶梯分配
+            if cur_len > 0:
+                match_ratio = reused / float(cur_len)
+                if reused == 0 or match_ratio < 0.2:
+                    delta = 0.8
+                    ts_list = []
+                    for i in range(cur_len):
+                        age = (cur_len - 1 - i) * delta
+                        t_i = (now_dt - timedelta(seconds=age)).isoformat()
+                        ts_list.append(t_i)
 
         # 记录当前状态用于下一轮对齐
-        LOG_STATE[key] = {'ts': ts_list, 'lines': lines}
+        LOG_STATE[key] = {'ts': ts_list, 'lines': lines, 'hashes': cur_hashes}
 
         # 组装带时间戳的行对象
         line_objs = [{'s': s, 't': ts_list[i]} for i, s in enumerate(lines)]
@@ -316,10 +340,18 @@ def _plotdata_path() -> str:
     base = load_fuzz_output_dir()
     if not base:
         return ''
-    # try default/plotdata then defaut/plotdata (typo-friendly)
-    cand1 = os.path.join(base, 'default', 'plotdata')
-    cand2 = os.path.join(base, 'defaut', 'plotdata')
-    return cand1 if os.path.exists(cand1) else cand2
+    # prefer default/plot_data, fallback to defaut/plot_data, then legacy names plotdata (compat)
+    cand = [
+        os.path.join(base, 'default', 'plot_data'),
+        os.path.join(base, 'defaut', 'plot_data'),
+        os.path.join(base, 'default', 'plotdata'),
+        os.path.join(base, 'defaut', 'plotdata'),
+    ]
+    for p in cand:
+        if os.path.exists(p):
+            return p
+    # 如果都不存在，则返回首选路径（便于前端展示正确预期路径）
+    return cand[0]
 
 
 def _tail_read_lines(path: str, max_bytes: int = 256_000) -> List[str]:
@@ -447,14 +479,21 @@ def _fuzz_output_dir() -> str:
 
 
 def _plotdata_path() -> str:
-    """基于 fuzz_config.yaml 的 OUTPUT_DIR 推导 plotdata 路径。"""
+    """基于 fuzz_config.yaml 的 OUTPUT_DIR 推导 plot_data 路径（兼容旧名 plotdata）。"""
     out_dir = _fuzz_output_dir()
     if not out_dir:
         return ''
-    # 常见路径 default/plotdata 或 defaut/plotdata（兼容拼写）
-    p1 = os.path.join(out_dir, 'default', 'plotdata')
-    p2 = os.path.join(out_dir, 'defaut', 'plotdata')
-    return p1 if os.path.exists(p1) else p2
+    # 优先 default/plot_data 与 defaut/plot_data；回退到 legacy 名称 plotdata 以兼容旧环境
+    candidates = [
+        os.path.join(out_dir, 'default', 'plot_data'),
+        os.path.join(out_dir, 'defaut', 'plot_data'),
+        os.path.join(out_dir, 'default', 'plotdata'),
+        os.path.join(out_dir, 'defaut', 'plotdata'),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0]
 
 
 def _cur_input_path() -> str:
@@ -492,7 +531,7 @@ def _hash_bytes(b: bytes) -> str:
 
 @app.route('/api/plot')
 def api_plot():
-    # plotdata
+    # plot_data
     path = _plotdata_path()
     exists = bool(path and os.path.exists(path))
     meta = {
