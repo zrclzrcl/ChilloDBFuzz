@@ -20,6 +20,8 @@ class ChiloMutator:
         self.seed_id = seed_id
         self.mutator_id = mutator_id
         self.file_name = f"{file_path}{seed_id}_{mutator_id}.py"
+        self.is_error = False   #是否在最终的FUZZ出现了错误
+        self.last_error_count = 0   #如果出现了最终FUZZ错误则加1...不过好像没啥用
 
 class ChiloMutatorPool:
     def __init__(self, file_path):

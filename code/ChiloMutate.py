@@ -96,7 +96,7 @@ def fuzz(buf, add_buf, max_size):
     #这里应该只需要做一件事就行，那就是启动LLM生成的变异程序，并获得一个SQL！
     chilo_factory.main_logger.info("进入fuzz阶段~")
     chilo_factory.main_logger.info("准备调用mutator生成")
-    mutated_out,is_random, seed_id, mutator_id = chilo_factory.mutate_once()
+    mutated_out,is_random, seed_id, mutator_id, is_error_occur = chilo_factory.mutate_once()
     chilo_factory.main_logger.info("变异完成")
     # 确保类型正确
     if isinstance(mutated_out, str):
@@ -116,7 +116,7 @@ def fuzz(buf, add_buf, max_size):
     chilo_factory.write_main_csv(fuzz_end_time, fuzz_count_number, fuzz_number,
                                  is_random, fuzz_end_time - fuzz_start_time, now_seed_id, seed_id, mutator_id,
                                  chilo_factory.wait_exec_mutator_list.qsize(), ori_mutate_out_size,
-                                 real_mutate_out_size, is_cut)
+                                 real_mutate_out_size, is_cut, is_error_occur)
     return mutated_out
 
 #当AFL++停止或结束的时候调用该函数，进行清理

@@ -167,7 +167,7 @@ class ChiloFactory:
             writer.writerow(["real_time", "relative_time", "fuzz_count_seed_number",
                              "fuzz_seed_number", "is_by_ramdom", "fuzz_use_time","now_seed_id",
                              "real_fuzz_seed_id", "real_mutator_id","left_wait_exec_queue_count",
-                             "ori_mutate_out_size", "real_mutate_out_size", "is_cut"])
+                             "ori_mutate_out_size", "real_mutate_out_size", "is_cut", "is_error_occur"])
         with open(self.mutator_generator_csv_path, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(["real_time", "relative_time", "seed_id", "use_all_time", "llm_use_time",
@@ -199,7 +199,7 @@ class ChiloFactory:
     def write_main_csv(self, real_time, fuzz_count_seed_number,
                        fuzz_seed_number, is_by_ramdom,fuzz_use_time, now_seed_id,
                        real_fuzz_seed_id, real_mutator_id,left_wait_exec_queue_count, ori_mutate_out_size,
-                       real_mutate_out_size, is_cut):
+                       real_mutate_out_size, is_cut, is_error_occur):
         """
         向主CSV里面写入一行
         :param real_time: 插入的真实时间
@@ -214,6 +214,7 @@ class ChiloFactory:
         :param ori_mutate_out_size: 变异原始输出大小
         :param real_mutate_out_size: 真正的变异后大小
         :param is_cut:  是否过长被截断
+        :param is_error_occur: 变异器是否在最终出现了问题
         :return:
         """
         with open(self.main_csv_path, mode='a', newline='', encoding='utf-8') as f:
@@ -222,7 +223,7 @@ class ChiloFactory:
                              fuzz_seed_number, is_by_ramdom, fuzz_use_time,
                              now_seed_id, real_mutator_id, real_fuzz_seed_id, left_wait_exec_queue_count,
                              ori_mutate_out_size,
-                             real_mutate_out_size, is_cut])
+                             real_mutate_out_size, is_cut, is_error_occur])
 
     def write_parser_csv(self, real_time, seed_id, need_mutate_count, is_parsed, llm_time,
                          up_token, down_token,  llm_count,
@@ -391,13 +392,30 @@ class ChiloFactory:
             else:
                 raise AttributeError(f"错误码：1203 {filepath} 中未找到 mutate() 函数")
 
-        self.main_logger.info(
-            f"正在等待调用 变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
-        mutate_testcase = call_mutate_from_file(mutator.file_name)
+        is_mutator_error_occur = False
+        while True:
+            self.main_logger.info(
+                f"正在等待调用 变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
+            try:
+                mutate_testcase = call_mutate_from_file(mutator.file_name)
+                break
+            except:
+                #这里出现问题，那是致命的！将会导致fuzz直接停止
+                #一旦出现问题，那我们就需要立即处理，随机选择其他的变异器
+                self.main_logger.error(
+                    f"调用的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id} 出现错误，正在随机挑选其他变异器")
+                is_mutator_error_occur = True
+                self.mutator_pool.mutator_list[mutator.mutator_id].is_error = True
+                self.mutator_pool.mutator_list[mutator.mutator_id].last_error_count += 1
+                #然后随机选择一个
+                mutator = self.mutator_pool.random_select_mutator()
+                self.main_logger.warning(
+                    f"随机挑选的新的调用的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
+
         self.all_seed_list.seed_list[mutator.seed_id].mutate_time += 1
         self.main_logger.info(
             f"调用变异完成，为该种子的第{self.all_seed_list.seed_list[mutator.seed_id].mutate_time}次变异 变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
-        return bytearray(mutate_testcase, "utf-8", errors="ignore"), is_by_random, mutator.seed_id, mutator.mutator_id
+        return bytearray(mutate_testcase, "utf-8", errors="ignore"), is_by_random, mutator.seed_id, mutator.mutator_id, is_mutator_error_occur
 
 
 
