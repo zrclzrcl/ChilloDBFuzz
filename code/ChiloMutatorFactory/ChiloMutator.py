@@ -13,12 +13,13 @@ from typing import List
 #先定义变异器
 
 class ChiloMutator:
-    def __init__(self, file_path, seed_id, mutator_id):
+    def __init__(self, file_path, seed_id, mutator_id, mutator_index):
         """
         初始化一个变异器池，其中具有一些属性
         """
         self.seed_id = seed_id
         self.mutator_id = mutator_id
+        self.mutator_index = mutator_index
         self.file_name = f"{file_path}{seed_id}_{mutator_id}.py"
         self.is_error = False   #是否在最终的FUZZ出现了错误
         self.last_error_count = 0   #如果出现了最终FUZZ错误则加1...不过好像没啥用
@@ -33,8 +34,9 @@ class ChiloMutatorPool:
         self.file_path = file_path
 
     def add_mutator(self, seed_id, mutator_id):
-        self.mutator_list.append(ChiloMutator(self.file_path, seed_id, mutator_id))
+        self.mutator_list.append(ChiloMutator(self.file_path, seed_id, mutator_id, self.next_mutator_index))
         self.next_mutator_index += 1
+        return self.next_mutator_index - 1
 
 
 

@@ -24,6 +24,7 @@ docker build -t chilodbfuzz:sqlite .
 #下面语句请在主机终端1运行
 docker run -it --privileged -p 5173:5173 --name sqlite_chilofuzz_test chilodbfuzz:sqlite /bin/bash
 # 请首先编写config.yaml以及fuzz_config.yaml
+vim ./config.yaml
 echo core | sudo tee /proc/sys/kernel/core_pattern
 
 #下面请在主机终端2运行

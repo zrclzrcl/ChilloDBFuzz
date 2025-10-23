@@ -21,11 +21,11 @@ def init(seed):
     chilo_factory = cf.ChiloFactory()   #首先初始化整个工厂（读配置文件）
     chilo_factory.main_logger.info("Chilo工厂初始化成功！")
     chilo_factory.main_logger.info("Chilo工厂准备启动3个子线程")
-    #还要启动三个线程
+    #还要启动多个线程
     parser = threading.Thread(target=LLMParser.chilo_parser, args=(chilo_factory,))
     mutator_generator = threading.Thread(target=LLMMutatorGenerater.chilo_mutator_generator, args=(chilo_factory,))
     structural_mutator = threading.Thread(target=LLMStructuralMutator.structural_mutator, args=(chilo_factory,))
-    mutator_fixer_t = threading.Thread(target=mutator_fixer.fix_mutator, args=(chilo_factory,))
+    
     chilo_factory.main_logger.info("Chilo工厂启动解析器中~")
     parser.start()
     chilo_factory.main_logger.info("解析器启动成功")
@@ -35,9 +35,16 @@ def init(seed):
     chilo_factory.main_logger.info("Chilo工厂启动结构化变异器中~")
     structural_mutator.start()
     chilo_factory.main_logger.info("结构化变异器启动成功")
-    chilo_factory.main_logger.info("Chilo工厂启动变异器修复器中~")
-    mutator_fixer_t.start()
-    chilo_factory.main_logger.info("变异器修复器启动成功")
+    
+    # 根据配置启动多个fixer线程
+    chilo_factory.main_logger.info(f"Chilo工厂启动变异器修复器中~（共{chilo_factory.fixer_thread_count}个线程）")
+    fixer_threads = []
+    for i in range(chilo_factory.fixer_thread_count):
+        mutator_fixer_t = threading.Thread(target=mutator_fixer.fix_mutator, args=(chilo_factory, i))
+        mutator_fixer_t.start()
+        fixer_threads.append(mutator_fixer_t)
+        chilo_factory.main_logger.info(f"变异器修复器[线程{i}]启动成功")
+    
     chilo_factory.main_logger.info("初始化完成，结束初始化~")
 
 
@@ -96,7 +103,7 @@ def fuzz(buf, add_buf, max_size):
     #这里应该只需要做一件事就行，那就是启动LLM生成的变异程序，并获得一个SQL！
     chilo_factory.main_logger.info("进入fuzz阶段~")
     chilo_factory.main_logger.info("准备调用mutator生成")
-    mutated_out,is_random, seed_id, mutator_id, is_error_occur = chilo_factory.mutate_once()
+    mutated_out,is_random, seed_id, mutator_id, is_error_occur, is_from_structural_mutator = chilo_factory.mutate_once()
     chilo_factory.main_logger.info("变异完成")
     # 确保类型正确
     if isinstance(mutated_out, str):
@@ -116,7 +123,7 @@ def fuzz(buf, add_buf, max_size):
     chilo_factory.write_main_csv(fuzz_end_time, fuzz_count_number, fuzz_number,
                                  is_random, fuzz_end_time - fuzz_start_time, now_seed_id, seed_id, mutator_id,
                                  chilo_factory.wait_exec_mutator_list.qsize(), ori_mutate_out_size,
-                                 real_mutate_out_size, is_cut, is_error_occur)
+                                 real_mutate_out_size, is_cut, is_error_occur, is_from_structural_mutator)
     return mutated_out
 
 #当AFL++停止或结束的时候调用该函数，进行清理

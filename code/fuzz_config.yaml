@@ -4,4 +4,4 @@ OUTPUT_DIR: "../../afl_output/"
 FUZZER_PATH: "../AFLplusplus/afl-fuzz"
 CHILO_MUTATOR_PATH: "./"
 #CHILO_CONDA_PYTHON_PATH: "/home/conda/envs/chilo/bin/python"
-FUZZ_TIME: 600
+FUZZ_TIME: 7210

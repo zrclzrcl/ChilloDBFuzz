@@ -71,8 +71,8 @@ SET default_storage_engine=[CONSTANT, number:2, type:enum_storage_engine, ori:AR
 CREATE TABLE t1 ( 
 Period smallint(4) unsigned zerofill DEFAULT [CONSTANT, number:3, type:char, ori:0000] NOT NULL, 
 Varor_period smallint(4) unsigned DEFAULT [CONSTANT, number:4, type:char, ori:0] NOT NULL 
-) ENGINE=[CONSTANT, type:enum_storage_engine, ori:archive];
-INSERT INTO t1 VALUES ([CONSTANT, number:5, type:smallint(4), ori:9410], [CONSTANT, type:smallint(4), ori:9412]);
+) ENGINE=[CONSTANT, number:5, type:enum_storage_engine, ori:archive];
+INSERT INTO t1 VALUES ([CONSTANT, number:6, type:smallint(4), ori:9410], [CONSTANT, type:smallint(4), ori:9412]);
 ```
 **Input:**
 ```sql

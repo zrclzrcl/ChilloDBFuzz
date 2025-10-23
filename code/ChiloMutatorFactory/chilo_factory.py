@@ -8,6 +8,7 @@ import importlib.util
 import queue
 import os
 import time
+import threading
 
 import yaml
 
@@ -30,6 +31,11 @@ class ChiloFactory:
 
         with open(self.config_file_path, "r", encoding="utf-8") as f:   #读配置文件
             config = yaml.safe_load(f)
+        
+        # 添加线程锁以保证线程安全
+        self.mutator_id_lock = threading.Lock()  # 保护 mutator_id 分配
+        self.mutator_pool_lock = threading.Lock()  # 保护 mutator_pool 操作
+        self.csv_lock = threading.Lock()  # 保护 CSV 文件写入
 
         self.main_log_path = config['LOG']['MAIN_LOG_PATH']   #主日志
         self.parser_log_path = config['LOG']['PARSER_LOG_PATH']   #解析器日志
@@ -40,11 +46,14 @@ class ChiloFactory:
 
         self.target_dbms = config['TARGET']['DBMS']     #目标DBMS
         self.target_dbms_version = config['TARGET']['DBMS_VERSION'] #目标版本
+
         self.wait_parse_list = queue.Queue()   #等待SQL解析的队列
         self.wait_mutator_generate_list = queue.Queue()    #等待变异器生成的队列
         self.wait_exec_mutator_list = queue.Queue() #等待执行的队列
         self.structural_mutator_list = queue.Queue()    #等待结构性变异的队列
-        self.fix_mutator_list = queue.Queue()
+        self.fix_mutator_list = queue.Queue()   #等待修复队列
+        self.wait_exec_structural_list = queue.Queue()   #等待执行结构性变异的队列 (优先)
+
         self.parsed_sql_path = config['FILE_PATH']['PARSED_SQL_PATH']
         self.generated_mutator_path = config['FILE_PATH']['GENERATED_MUTATOR_PATH']
         self.structural_mutator_path = config['FILE_PATH']['STRUCTURAL_MUTATE_PATH']   #结构化变异的文件路径
@@ -56,6 +65,7 @@ class ChiloFactory:
         self.fix_mutator_try_time = config['OTHERS']['FIX_MUTATOR_TRY_TIME']
         self.semantic_fix_max_time = config['OTHERS']['SEMANTIC_FIX_MAX_TIME']
         self.times_to_structural_mutator = config['OTHERS']['TIMES_TO_STRUCTURAL_MUTATOR']
+        self.fixer_thread_count = config['OTHERS'].get('FIXER_THREAD_COUNT', 1)  # fixer线程数量，默认为1
 
         #下面是CSV文件
         self.mutator_fixer_csv_path = config['CSV']['MUTATOR_FIXER_CSV_PATH']
@@ -167,7 +177,8 @@ class ChiloFactory:
             writer.writerow(["real_time", "relative_time", "fuzz_count_seed_number",
                              "fuzz_seed_number", "is_by_ramdom", "fuzz_use_time","now_seed_id",
                              "real_fuzz_seed_id", "real_mutator_id","left_wait_exec_queue_count",
-                             "ori_mutate_out_size", "real_mutate_out_size", "is_cut", "is_error_occur"])
+                             "ori_mutate_out_size", "real_mutate_out_size", "is_cut",
+                              "is_error_occur", "is_from_structural_mutator"])
         with open(self.mutator_generator_csv_path, mode='a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(["real_time", "relative_time", "seed_id", "use_all_time", "llm_use_time",
@@ -189,17 +200,18 @@ class ChiloFactory:
         :param left_mutator_generate_queue_count: 待生成变异器队列个数
         :return: 无
         """
-        with open(self.mutator_generator_csv_path, mode='a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([real_time, real_time-self.start_time,
-                             seed_id, use_all_time,
-                             llm_use_time, llm_up_token, llm_down_token,
-                             llm_count, llm_error_count, left_mutator_generate_queue_count])
+        with self.csv_lock:  # 加锁保护CSV写入
+            with open(self.mutator_generator_csv_path, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([real_time, real_time-self.start_time,
+                                 seed_id, use_all_time,
+                                 llm_use_time, llm_up_token, llm_down_token,
+                                 llm_count, llm_error_count, left_mutator_generate_queue_count])
 
     def write_main_csv(self, real_time, fuzz_count_seed_number,
                        fuzz_seed_number, is_by_ramdom,fuzz_use_time, now_seed_id,
                        real_fuzz_seed_id, real_mutator_id,left_wait_exec_queue_count, ori_mutate_out_size,
-                       real_mutate_out_size, is_cut, is_error_occur):
+                       real_mutate_out_size, is_cut, is_error_occur, is_from_structural_mutator):
         """
         向主CSV里面写入一行
         :param real_time: 插入的真实时间
@@ -215,15 +227,17 @@ class ChiloFactory:
         :param real_mutate_out_size: 真正的变异后大小
         :param is_cut:  是否过长被截断
         :param is_error_occur: 变异器是否在最终出现了问题
+        :param is_from_structural_mutator: 是否从结构化变异队列中取出的
         :return:
         """
-        with open(self.main_csv_path, mode='a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([real_time, real_time-self.start_time , fuzz_count_seed_number,
-                             fuzz_seed_number, is_by_ramdom, fuzz_use_time,
-                             now_seed_id, real_mutator_id, real_fuzz_seed_id, left_wait_exec_queue_count,
-                             ori_mutate_out_size,
-                             real_mutate_out_size, is_cut, is_error_occur])
+        with self.csv_lock:  # 加锁保护CSV写入
+            with open(self.main_csv_path, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([real_time, real_time-self.start_time , fuzz_count_seed_number,
+                                 fuzz_seed_number, is_by_ramdom, fuzz_use_time,
+                                 now_seed_id, real_fuzz_seed_id, real_mutator_id, left_wait_exec_queue_count,
+                                 ori_mutate_out_size,
+                                 real_mutate_out_size, is_cut, is_error_occur, is_from_structural_mutator])
 
     def write_parser_csv(self, real_time, seed_id, need_mutate_count, is_parsed, llm_time,
                          up_token, down_token,  llm_count,
@@ -245,12 +259,13 @@ class ChiloFactory:
         :param select_count: 当前种子被选中的次数
         :return: 无
         """
-        with open(self.parser_csv_path, mode='a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([real_time, real_time - self.start_time, seed_id,
-                             need_mutate_count, is_parsed, llm_time, up_token,
-                             down_token,llm_count, llm_format_error_count, all_time, select_count,
-                             left_parser_queue_count])
+        with self.csv_lock:  # 加锁保护CSV写入
+            with open(self.parser_csv_path, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([real_time, real_time - self.start_time, seed_id,
+                                 need_mutate_count, is_parsed, llm_time, up_token,
+                                 down_token,llm_count, llm_format_error_count, all_time, select_count,
+                                 left_parser_queue_count])
 
     def write_mutator_fixer_csv(self,real_time, seed_id,  all_use_time, mutator_id, need_mutate_count,
                                 all_llm_count, syntax_use_time, syntax_error_count, syntax_format_error_time,
@@ -288,9 +303,10 @@ class ChiloFactory:
         :param at_last_is_all_correct : 最终是否完全正确
         :return:
         """
-        with open(self.mutator_fixer_csv_path, mode='a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([real_time, real_time-self.start_time, seed_id, mutator_id, need_mutate_count, all_use_time,  all_llm_count, syntax_use_time,syntax_error_count, syntax_format_error_time,syntax_llm_use_time,syntax_llm_count,syntax_up_token, syntax_down_token,sematic_use_time, semantic_mask_error_count, semantic_random_error_count, semantic_error_count, semantic_error_llm_use_time,semantic_error_llm_count,semantic_llm_format_error,semantic_up_token, semantic_down_token,left_fix_queue_count,at_last_is_all_correct])
+        with self.csv_lock:  # 加锁保护CSV写入
+            with open(self.mutator_fixer_csv_path, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([real_time, real_time-self.start_time, seed_id, mutator_id, need_mutate_count, all_use_time,  all_llm_count, syntax_use_time,syntax_error_count, syntax_format_error_time,syntax_llm_use_time,syntax_llm_count,syntax_up_token, syntax_down_token,sematic_use_time, semantic_mask_error_count, semantic_random_error_count, semantic_error_count, semantic_error_llm_use_time,semantic_error_llm_count,semantic_llm_format_error,semantic_up_token, semantic_down_token,left_fix_queue_count,at_last_is_all_correct])
 
     def write_structural_mutator_csv(self, real_time, seed_id, new_seed_id,
                                      all_use_time, llm_up_token, llm_down_token, llm_count,
@@ -309,12 +325,13 @@ class ChiloFactory:
         :param left_structural_mutate_queue_count: 等待结构化变异的队列剩余个数
         :return:
         """
-        with open(self.structural_mutator_csv_path, mode='a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([real_time, real_time-self.start_time, seed_id,
-                             new_seed_id, all_use_time, llm_up_token, llm_down_token,
-                             llm_count, llm_format_error_count, llm_use_time,
-                             left_structural_mutate_queue_count])
+        with self.csv_lock:  # 加锁保护CSV写入
+            with open(self.structural_mutator_csv_path, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([real_time, real_time-self.start_time, seed_id,
+                                 new_seed_id, all_use_time, llm_up_token, llm_down_token,
+                                 llm_count, llm_format_error_count, llm_use_time,
+                                 left_structural_mutate_queue_count])
 
 
 
@@ -338,7 +355,7 @@ class ChiloFactory:
             #说明进行一次结构性变异
             self.structural_mutator_list.put({"seed_id":seed_id , "mutate_time":mutate_time})
             self.main_logger.info(f"种子编号：{seed_id} 已放入结构化变异队列等待变异，变异次数为{mutate_time}")
-            return 0
+            
 
         self.main_logger.info(f"种子编号：{seed_id} 准备进入解析队列")
         #然后直接加入到待parse中
@@ -356,26 +373,43 @@ class ChiloFactory:
         mutator: ChiloMutator.ChiloMutator | None = None
         # 首先尝试从待执行的队列中非阻塞地取出一个
         is_first_time = True
-        while True:
-            if is_first_time:
-                self.main_logger.info("准备执行一次待变异任务队列中的变异任务")
-                is_first_time = False
-            try:
-                mutator = self.wait_exec_mutator_list.get_nowait()
-                self.main_logger.info("从任务列表中获取任务成功！")
-                is_by_random = False
-            except queue.Empty:
-                # 队列为空，改为从变异器池中随机选择一个
-                self.main_logger.info("从任务列表为空，准备从变异池随机选择")
-                mutator = self.mutator_pool.random_select_mutator()
-                self.main_logger.info("变异池随机选择成功！")
-                is_by_random = True
-            if mutator is not None:
+        is_by_random = None
+        #先尝试从结构化变异队列中取出一个变异好的测试用例
+        try:
+            self.main_logger.info("尝试从结构化变异队列中取出一个变异好的测试用例")
+            mutator = self.wait_exec_structural_list.get_nowait()
+            is_from_structural_mutator = True
+        except queue.Empty:
+            self.main_logger.info("结构化变异队列为空，准备从变异器池中随机选择一个")
+            is_from_structural_mutator = False
+        if not is_from_structural_mutator:
+            while True:
+                if is_first_time:
+                    self.main_logger.info("准备执行一次待变异任务队列中的变异任务")
+                    is_first_time = False
+                try:
+                    mutator = self.wait_exec_mutator_list.get_nowait()
+                    self.main_logger.info("从任务列表中获取任务成功！")
+                    is_by_random = False
+                except queue.Empty:
+                    # 队列为空，改为从变异器池中随机选择一个
+                    self.main_logger.info("从任务列表为空，准备从变异池随机选择")
+                    mutator = self.mutator_pool.random_select_mutator()
+                    self.main_logger.info("变异池随机选择成功！")
+                    is_by_random = True
+                if mutator is not None:
+                    break
+                self.main_logger.warning("变异池与任务列表均为空！进入等待！！")
+                mutator = self.wait_exec_mutator_list.get()
                 break
-            self.main_logger.warning("变异池与任务列表均为空！进入等待！！")
-            mutator = self.wait_exec_mutator_list.get()
-            break
+
         assert mutator is not None
+        if is_from_structural_mutator:
+            #说明是从结构化变异队列中取出的
+            self.main_logger.info(f"从结构化变异队列中取出的变异好的测试用例，种子id：{mutator["seed_id"]}")
+            return bytearray(mutator["mutate_content"], "utf-8", errors="ignore"), False,\
+             mutator["seed_id"], None, None, is_from_structural_mutator
+        
         self.main_logger.info(f"变异器任务加载完毕，变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
         #下一步就要根据mutator去加载模块，并调用启动了
         def call_mutate_from_file(filepath):
@@ -405,8 +439,8 @@ class ChiloFactory:
                 self.main_logger.error(
                     f"调用的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id} 出现错误，正在随机挑选其他变异器")
                 is_mutator_error_occur = True
-                self.mutator_pool.mutator_list[mutator.mutator_id].is_error = True
-                self.mutator_pool.mutator_list[mutator.mutator_id].last_error_count += 1
+                self.mutator_pool.mutator_list[mutator.mutator_index].is_error = True
+                self.mutator_pool.mutator_list[mutator.mutator_index].last_error_count += 1
                 #然后随机选择一个
                 mutator = self.mutator_pool.random_select_mutator()
                 self.main_logger.warning(
@@ -415,7 +449,7 @@ class ChiloFactory:
         self.all_seed_list.seed_list[mutator.seed_id].mutate_time += 1
         self.main_logger.info(
             f"调用变异完成，为该种子的第{self.all_seed_list.seed_list[mutator.seed_id].mutate_time}次变异 变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
-        return bytearray(mutate_testcase, "utf-8", errors="ignore"), is_by_random, mutator.seed_id, mutator.mutator_id, is_mutator_error_occur
+        return bytearray(mutate_testcase, "utf-8", errors="ignore"), is_by_random, mutator.seed_id, mutator.mutator_id, is_mutator_error_occur, is_from_structural_mutator
 
 
 

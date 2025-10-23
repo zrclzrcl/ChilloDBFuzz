@@ -80,8 +80,8 @@ def structural_mutator(my_chilo_factory: ChiloFactory):
         with open(f"{my_chilo_factory.structural_mutator_path}{structural_count}_{target_seed_id}_{new_seed_id}.txt", "w", encoding="utf-8") as f:
             f.write(after_mutate_testcase)
         my_chilo_factory.structural_mutator_logger.info(f"seed_id：{target_seed_id}，变异后，新的seed_id为：{new_seed_id}，已保存到文件{structural_count}_{target_seed_id}_{new_seed_id}.txt")
-        my_chilo_factory.wait_parse_list.put({"seed_id": new_seed_id, "mutate_time": need_structural_mutate["mutate_time"]})
-        my_chilo_factory.structural_mutator_logger.info(f"seed_id：{new_seed_id}，已加入待解析任务队列")
+        my_chilo_factory.wait_exec_structural_list.put({"seed_id": new_seed_id, "is_from_structural_mutator": True, "mutate_content": after_mutate_testcase})
+        my_chilo_factory.structural_mutator_logger.info(f"seed_id：{new_seed_id}，已加入等待执行结构化变异队列")
         my_chilo_factory.structural_mutator_logger.info("-" * 10)
         structural_mutate_end_time = time.time()
         my_chilo_factory.write_structural_mutator_csv(structural_mutate_end_time, target_seed_id, new_seed_id, structural_mutate_end_time-structural_mutate_start_time,

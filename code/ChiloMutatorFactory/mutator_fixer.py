@@ -98,10 +98,11 @@ def call_mutate_from_file(filepath):
     else:
         raise AttributeError(f"错误码：1203 该变异器中未找到 mutate() 函数")
 
-def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
+def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory, thread_id=0):
     """
     用于修复变异器的线程方法
     :param my_chilo_factory: 传递过来的实例化chilo工厂
+    :param thread_id: 线程ID，用于区分不同的fixer线程
     :return: 无返回值
     """
     # 验证一共有如下的几个流程
@@ -109,7 +110,11 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
     # 2. 调用生成的测试用例中不包括任何掩码
     # 3. 多次生成的结果不同，具有随机性
     # 4. 每有一个条件不满足，就要从新的修复
-    my_chilo_factory.mutator_fixer_logger.info("变异器修复器已启动~")
+    my_chilo_factory.mutator_fixer_logger.info(f"变异器修复器[线程{thread_id}]已启动~")
+    
+    # 为每个线程创建独立的临时文件路径
+    thread_tmp_path = my_chilo_factory.mutator_fix_tmp_path.replace(".py", f"_thread{thread_id}.py")
+    
     while True: #每次循环处理一个
         all_start_time = time.time()
         syntax_fix_use_time_all = 0
@@ -130,26 +135,26 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
         semantic_up_token_all = 0
         semantic_down_token_all = 0
         at_last_is_all_correct = True
-        my_chilo_factory.mutator_fixer_logger.info("等待接收变异器修复任务")
+        my_chilo_factory.mutator_fixer_logger.info(f"[线程{thread_id}]等待接收变异器修复任务")
         need_fix = my_chilo_factory.fix_mutator_list.get()  #先从队列中取一个用来修复
         fix_seed_id = need_fix["seed_id"]
         fix_mutate_time = need_fix["mutate_time"]
         fix_mutator_code = need_fix["mutator_code"]
-        my_chilo_factory.mutator_fixer_logger.info(f"接收到变异器修复任务，seed_id：{fix_seed_id}，变异次数：{fix_mutate_time}")
+        my_chilo_factory.mutator_fixer_logger.info(f"[线程{thread_id}]接收到变异器修复任务，seed_id：{fix_seed_id}，变异次数：{fix_mutate_time}")
         while True: #用于检测修复的循环
-            # 先保存到临时文件
+            # 先保存到临时文件（使用线程独立的临时文件）
             my_chilo_factory.mutator_fixer_logger.info(
-                f"seed_id：{fix_seed_id}，等待写入临时文件")
-            with open(my_chilo_factory.mutator_fix_tmp_path, "w", encoding="utf-8") as f:
+                f"[线程{thread_id}]seed_id：{fix_seed_id}，等待写入临时文件")
+            with open(thread_tmp_path, "w", encoding="utf-8") as f:
                 f.write(fix_mutator_code)  # 保存到文件
             my_chilo_factory.mutator_fixer_logger.info(
-                f"seed_id：{fix_seed_id}，已写入至临时文件")
+                f"[线程{thread_id}]seed_id：{fix_seed_id}，已写入至临时文件")
             # 准备调用运行一下
             fix_reason = []
             try:
                 my_chilo_factory.mutator_fixer_logger.info(
-                    f"seed_id：{fix_seed_id}，准备试运行")
-                mutate_result = [call_mutate_from_file(my_chilo_factory.mutator_fix_tmp_path) for _ in range(my_chilo_factory.fix_mutator_try_time)]
+                    f"[线程{thread_id}]seed_id：{fix_seed_id}，准备试运行")
+                mutate_result = [call_mutate_from_file(thread_tmp_path) for _ in range(my_chilo_factory.fix_mutator_try_time)]
                 # 这里证明至少语法没问题，那就检测并修复修复语义
                 sematic_fix_start_time = time.time()
                 my_chilo_factory.mutator_fixer_logger.info(
@@ -264,32 +269,39 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory):
                             f"seed_id：{fix_seed_id}，第 {syntax_error_count} 次语法修复失败，LLM返回格式错误，准备进行下一轮尝试")
 
         #到这里说明语法语义都没问题了
-        #先获取一个mutator_id
+        #先获取一个mutator_id（使用锁保护，确保线程安全）
         my_chilo_factory.mutator_fixer_logger.info(
-            f"seed_id：{fix_seed_id}，语法语义修复结束，准备进行FUZZ任务发布")
-        now_mutator_id = my_chilo_factory.all_seed_list.seed_list[fix_seed_id].next_mutator_id
+            f"[线程{thread_id}]seed_id：{fix_seed_id}，语法语义修复结束，准备进行FUZZ任务发布")
+        
+        with my_chilo_factory.mutator_id_lock:
+            now_mutator_id = my_chilo_factory.all_seed_list.seed_list[fix_seed_id].next_mutator_id
+            my_chilo_factory.all_seed_list.seed_list[fix_seed_id].next_mutator_id += 1
+        
         my_chilo_factory.mutator_fixer_logger.info(
-            f"seed_id：{fix_seed_id}，本次对应的mutator_id为{now_mutator_id}")
-        my_chilo_factory.all_seed_list.seed_list[fix_seed_id].next_mutator_id += 1
+            f"[线程{thread_id}]seed_id：{fix_seed_id}，本次对应的mutator_id为{now_mutator_id}")
+        
         save_mutator_path = os.path.join(my_chilo_factory.generated_mutator_path,
                                          f"{fix_seed_id}_{now_mutator_id}.py")
         with open(save_mutator_path, "w", encoding="utf-8") as f:
             f.write(fix_mutator_code)  # 保存到文件
         my_chilo_factory.mutator_fixer_logger.info(
-            f"seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 已保存到文件")
+            f"[线程{thread_id}]seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 已保存到文件")
 
-        # 构建一个变异器
-        my_chilo_factory.mutator_pool.add_mutator(fix_seed_id, now_mutator_id)
-        mutator_add_in_exec = ChiloMutator(my_chilo_factory.generated_mutator_path, fix_seed_id,now_mutator_id)
+        # 构建一个变异器（使用锁保护mutator_pool操作）
+        with my_chilo_factory.mutator_pool_lock:
+            mutator_index = my_chilo_factory.mutator_pool.next_mutator_index
+            my_chilo_factory.mutator_pool.add_mutator(fix_seed_id, now_mutator_id, mutator_index)
+        
+        mutator_add_in_exec = ChiloMutator(my_chilo_factory.generated_mutator_path, fix_seed_id, now_mutator_id, mutator_index)
         my_chilo_factory.mutator_fixer_logger.info(
-            f"seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 变异器构造完成")
+            f"[线程{thread_id}]seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 变异器构造完成")
 
         for i in range(fix_mutate_time):
             my_chilo_factory.wait_exec_mutator_list.put(mutator_add_in_exec)    #构建待执行任务
         my_chilo_factory.mutator_fixer_logger.info(
-            f"seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 任务发布成功，变异次数：{fix_mutate_time}")
+            f"[线程{thread_id}]seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 任务发布成功，变异次数：{fix_mutate_time}")
         my_chilo_factory.mutator_fixer_logger.info(
-            f"-"*10)
+            f"[线程{thread_id}]"+"-"*10)
         left_fix_queue_size = my_chilo_factory.fix_mutator_list.qsize()
         all_end_time = time.time()
         my_chilo_factory.write_mutator_fixer_csv(all_end_time, fix_seed_id, all_end_time-all_start_time,
