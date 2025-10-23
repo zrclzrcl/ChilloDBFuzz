@@ -3,6 +3,7 @@ LLM调用相关的封装好的函数
 """
 import re
 import time
+import threading
 
 from openai import OpenAI
 import logging
@@ -19,6 +20,13 @@ class LLMTool:
         self.base_url = base_url
         self.logger = logger
         self.request_count = 0
+        self._count_lock = threading.Lock()  # 添加锁保护计数器
+        
+        # 复用 OpenAI client 实例，提高性能
+        self.client = OpenAI(
+            api_key=self.llm_api_key,
+            base_url=self.base_url,
+        )
         self.logger.info("LLM工具已实例化")
 
     def chat_llm(self, prompt: str, system_prompt = "You are a DBMS fuzzing expert. Carefully reason step-by-step following the user's instructions, then provide the result."):
@@ -26,17 +34,17 @@ class LLMTool:
         :param prompt:      提示词字典，需要按照{role}
         :return:                  调用LLM后LLM返回的结果
         """
-        client = OpenAI(
-            api_key=self.llm_api_key,
-            base_url=self.base_url,
-        )
-        self.request_count += 1
-        count_now = self.request_count
+        # 使用锁保护计数器，确保线程安全
+        with self._count_lock:
+            self.request_count += 1
+            count_now = self.request_count
+        
         self.logger.info(f"LLM 第{count_now}次请求准备开始")
         start_time = time.time()
         while True:
             try:
-                response = client.chat.completions.create(
+                # 复用 client 实例（OpenAI SDK 内部已做线程安全处理）
+                response = self.client.chat.completions.create(
                     model=self.llm_model,
                     messages=[
                         {"role": "system", "content": system_prompt},
