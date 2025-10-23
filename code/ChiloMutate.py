@@ -59,14 +59,14 @@ def fuzz_count(buf):
     """
     global fuzz_count_number
     fuzz_count_number += 1
-    mutate_time = 50
+    mutate_time = 64
     #应该采用队列的设计，先放入工厂的队列中，等待加工
     global chilo_factory
     chilo_factory.main_logger.info("进入fuzz_count~")
     chilo_factory.main_logger.info("准备将buf中种子加入到待解析队列中~")
     chilo_factory.add_one_seed_to_parse_list(buf, mutate_time)
     chilo_factory.main_logger.info("该种子fuzz_count处理完成")
-    return mutate_time   #为快速迭代，目前写死为50
+    return mutate_time   #为快速迭代，目前写死为64
 
 def splice_optout():
     """

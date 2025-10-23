@@ -406,9 +406,9 @@ class ChiloFactory:
         assert mutator is not None
         if is_from_structural_mutator:
             #说明是从结构化变异队列中取出的
-            self.main_logger.info(f"从结构化变异队列中取出的变异好的测试用例，种子id：{mutator["seed_id"]}")
-            return bytearray(mutator["mutate_content"], "utf-8", errors="ignore"), False,\
-             mutator["seed_id"], None, None, is_from_structural_mutator
+            self.main_logger.info(f"从结构化变异队列中取出的变异好的测试用例，种子id：{mutator['seed_id']}")
+            return bytearray(mutator['mutate_content'], "utf-8", errors="ignore"), False,\
+             mutator['seed_id'], None, None, is_from_structural_mutator
         
         self.main_logger.info(f"变异器任务加载完毕，变异的目标种子id:{mutator.seed_id}，变异器编号为：{mutator.mutator_id}")
         #下一步就要根据mutator去加载模块，并调用启动了

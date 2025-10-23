@@ -289,10 +289,9 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory, thread_id=0):
 
         # 构建一个变异器（使用锁保护mutator_pool操作）
         with my_chilo_factory.mutator_pool_lock:
-            mutator_index = my_chilo_factory.mutator_pool.next_mutator_index
-            my_chilo_factory.mutator_pool.add_mutator(fix_seed_id, now_mutator_id, mutator_index)
+            mutator_index = my_chilo_factory.mutator_pool.add_mutator(fix_seed_id, now_mutator_id)
         
-        mutator_add_in_exec = ChiloMutator(my_chilo_factory.generated_mutator_path, fix_seed_id, now_mutator_id, mutator_index)
+        mutator_add_in_exec = my_chilo_factory.mutator_pool.mutator_list[mutator_index]
         my_chilo_factory.mutator_fixer_logger.info(
             f"[线程{thread_id}]seed_id：{fix_seed_id}，mutator_id：{now_mutator_id} 变异器构造完成")
 

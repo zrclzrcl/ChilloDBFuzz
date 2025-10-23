@@ -4,31 +4,110 @@ from .chilo_factory import ChiloFactory
 
 def _get_structural_prompt(sql, target_dbms, dbms_version):
     prompt = f"""
-Please perform structural mutations on the given test case according to the following requirements:
-Task objectives:
-1. Apply structural mutations to the SQL test case I provide and generate new SQL test cases.
-2. Each test case should contain multiple SQL statements and include only SQL statements (no non-SQL content).
+You are an expert in database fuzzing whose goal is to **TRIGGER CRASHES AND BUGS** in {target_dbms} version {dbms_version}. Perform aggressive structural mutations on the provided SQL test case to maximize the likelihood of exposing vulnerabilities, edge cases, and crash-inducing behaviors.
 
-Mutation requirements:
-1. Reordering: You may change the execution order of the original SQL statements to explore differences in execution dependencies.
-2. Addition/deletion: You may add or remove some SQL statements. Any added SQL statements must be syntactically correct, semantically reasonable, and directly executable on the database.
-3. Complexity enhancement: Generated SQL should, whenever possible, include complex constructs (e.g., deeply nested queries, CTEs, triggers, transaction blocks, temporary tables, etc.).
-4. Database specificity: Prefer using keywords, functions, or features specific to {target_dbms} version {dbms_version} (for example, unique system functions, optimizer hints, stored procedure syntax, etc.).
-5. Crash-exploration focus: The goal is to produce SQL structures that are more likely to trigger crashes or anomalous behaviors in the database, rather than mere syntactic perturbations.
-6. The output must be pure SQL content.
-7. After mutation, you must validate the generated test case to ensure syntactic and semantic correctness.
-8. Execution-time constraint (fuzzing safety): Each generated test case must be short-running and suitable for automated fuzzing. Do NOT include infinite loops, unbounded waits, or constructs that can block indefinitely. Avoid long-running operations; Each test executes quickly and deterministically.
+🎯 PRIMARY OBJECTIVE: Generate SQL that is **HIGHLY LIKELY TO CRASH** or trigger anomalous behaviors, NOT just syntactically correct variations.
 
-Output format:
-1. Return the mutated SQL test case wrapped as: \n```sql\n(generated test case)\n``` (using newline + triple-backtick + "sql" as shown).
-2. Each SQL statement must end with a semicolon (`;`).
+📋 AGGRESSIVE MUTATION STRATEGIES (Apply 3-5 of these):
 
-Input test case:
+1. **EXTREME COMPLEXITY INJECTION**:
+   - Add 5-10 levels of deeply nested subqueries
+   - Use recursive CTEs with large recursion depths (e.g., RECURSIVE with UNION ALL, 100+ iterations)
+   - Combine multiple window functions (ROW_NUMBER, RANK, LAG, LEAD, NTILE) in complex expressions
+   - Create circular dependencies between views/tables if possible
+   - Mix correlated and non-correlated subqueries in unexpected places
+
+2. **TYPE CONFUSION & CONVERSION CHAOS**:
+   - Force implicit type conversions between incompatible types (e.g., CAST(geometry AS int), CAST(NULL AS custom_type))
+   - Mix string, numeric, date, binary, and NULL types in arithmetic operations
+   - Use UNION with mismatched column types
+   - Apply aggregate functions on incompatible types
+   - Create computed columns with ambiguous type inference
+
+3. **BOUNDARY & EDGE CASE EXPLOITATION**:
+   - Use extreme values: INT_MAX, INT_MIN, very large floats (1e308), negative zeros
+   - Empty strings, single quotes, NULL bytes (\\x00), unicode edge cases
+   - Zero-length arrays, empty JSON/XML, malformed structures
+   - Division by zero, modulo by zero, negative array indices
+   - Overflow-inducing arithmetic (e.g., MAX_INT + 1, factorial of large numbers)
+
+4. **ADVANCED SQL FEATURES (DBMS-SPECIFIC)**:
+   - **{target_dbms} specific functions**: Use obscure built-in functions, system functions, version-specific features
+   - **Window functions**: Complex PARTITION BY with multiple columns, ORDER BY with edge cases, RANGE/ROWS frame specifications
+   - **JSON/XML operations**: Deeply nested paths, malformed JSON/XML, type mismatches in path expressions
+   - **Full-text search**: Complex text search queries with unicode, special characters, phrase matching edge cases
+   - **Aggregate functions**: Nested aggregates, custom aggregates, GROUP BY with HAVING complexity, ROLLUP/CUBE/GROUPING SETS
+   - **Collation/Character sets**: Mix different collations, character set conversions, binary vs case-insensitive comparisons
+   - **Triggers**: Cascading triggers, multi-level trigger chains, trigger timing edge cases (BEFORE/AFTER/INSTEAD OF)
+   - **Views**: Materialized views, updateable views, views referencing views with circular-like patterns
+   - **Indexes**: Partial indexes, expression-based indexes, multi-column indexes with edge cases
+   - **Constraints**: Complex CHECK constraints, deferred constraints, constraint violations in edge cases
+
+5. **CUSTOM FUNCTIONS & STORED PROCEDURES**:
+   - Create user-defined functions (UDF) with recursive calls
+   - Define stored procedures with complex control flow (nested loops, exception handlers)
+   - Use triggers with cascading actions
+   - Create functions that call themselves or other functions recursively
+   - Mix deterministic and non-deterministic functions
+
+6. **TRANSACTION & CONCURRENCY EDGE CASES**:
+   - BEGIN/COMMIT/ROLLBACK with nested transactions
+   - SAVEPOINT with edge cases (rolling back to non-existent savepoints)
+   - Mix DDL and DML in transactions
+   - Use LOCK TABLES with conflicting lock types
+   - Create temporary tables inside transactions and drop them ambiguously
+
+7. **SCHEMA MANIPULATION CHAOS**:
+   - ALTER TABLE with incompatible type changes
+   - DROP and CREATE same object in rapid succession
+   - Add constraints that conflict with existing data
+   - Rename tables/columns while they're being referenced
+   - Create indexes on expressions that might fail
+
+8. **EXTREME DATA GENERATION**:
+   - INSERT with SELECT generating 1000+ rows
+   - Self-joins creating cartesian products
+   - Generate series with extreme ranges
+   - Use CROSS JOIN to create exponential row explosions (controlled to avoid timeout)
+
+9. **EXPRESSION COMPLEXITY**:
+   - 10+ levels of CASE WHEN nesting
+   - Complex boolean expressions with AND/OR/NOT, precedence ambiguity
+   - Arithmetic expressions with mixed operators and parentheses
+   - String concatenation with NULL handling edge cases
+   - Pattern matching with backtracking-heavy regex
+
+10. **ERROR-PRONE PATTERNS**:
+    - Access non-existent columns/tables and catch errors
+    - Out-of-bounds array/string access
+    - Invalid format strings in date/number formatting
+    - Circular foreign key references
+    - Self-referencing views or recursive definitions
+
+⚠️ CRITICAL CONSTRAINTS:
+1. **Execution time**: Keep operations fast (<1 second). Avoid actual infinite loops, but create complex-enough structures that approach time limits.
+2. **Syntactic validity**: Generated SQL MUST be syntactically correct for {target_dbms} version {dbms_version}.
+3. **Pure SQL**: Output only SQL statements, no comments or explanations in the code block.
+4. **Semicolon termination**: Each statement ends with `;`.
+
+🎲 MUTATION INTENSITY: **HIGH**
+- Perform **RADICAL transformations**, not minor tweaks
+- Add 5-15 new SQL statements
+- Combine multiple mutation strategies
+- Maximize structural complexity while maintaining executability
+
+📤 OUTPUT FORMAT:
+Return ONLY the mutated SQL wrapped as:
+```sql
+(your mutated SQL here)
+```
+
+📥 INPUT TEST CASE:
 ```sql
 {sql}
 ```
 
-Now, based on the above requirements, perform structural mutation on the provided SQL test case. Target DBMS: {target_dbms} (version {dbms_version}).
+🚀 NOW GENERATE: Apply 3-5 mutation strategies to create a **CRASH-INDUCING** SQL test case for {target_dbms} version {dbms_version}. Be aggressive, creative, and target known database vulnerability patterns!
 """
     return prompt
 
@@ -39,7 +118,15 @@ def structural_mutator(my_chilo_factory: ChiloFactory):
     """
     structural_count = 0
     my_chilo_factory.structural_mutator_logger.info("结构化变异器已启动！")
-    system_prompt = "You are a database fuzzing expert whose role is to generate complex SQL test cases that can trigger database exceptions or crashes. Based on the original test cases I provide, you will produce new SQL test cases via structured mutations to maximize the likelihood of exposing potential vulnerabilities or causing crashes in the target DBMS."
+    system_prompt = """You are an AGGRESSIVE database security researcher and fuzzing expert specializing in crash discovery. Your mission is to generate EXTREME SQL test cases that exploit edge cases, boundary conditions, and known vulnerability patterns in database systems. You have deep knowledge of:
+- DBMS implementation bugs and historical CVEs
+- Type system vulnerabilities and implicit conversion edge cases  
+- Query optimizer weaknesses and plan generation bugs
+- Memory corruption patterns in SQL engines
+- Concurrency and transaction isolation anomalies
+- Parser and lexer edge cases
+
+Your generated SQL should be MAXIMALLY COMPLEX and target crash-prone areas. Prioritize creativity and aggressiveness over conservatism. Every test case should push the DBMS to its limits."""
     while True:
         structural_mutate_start_time = time.time()
         structural_count += 1
