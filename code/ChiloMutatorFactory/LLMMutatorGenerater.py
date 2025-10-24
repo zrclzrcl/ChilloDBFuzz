@@ -237,14 +237,14 @@ def chilo_mutator_generator(my_chilo_factory: ChiloFactory):
             start_time = time.time()
             my_chilo_factory.mutator_generator_logger.info(
                 f"seed_id：{generate_target['seed_id']}  准备调用LLM，生成变异器")
-            mutator_code, up_token, down_token = my_chilo_factory.llm_tool_box.chat_llm(prompt)    #调用LLM
+            mutator_code, up_token, down_token = my_chilo_factory.llm_tool_mutator_generator.chat_llm(prompt)    #调用LLM
             end_time = time.time()
             all_up_token += up_token
             all_down_token += down_token
             llm_count += 1
             my_chilo_factory.mutator_generator_logger.info(
                 f"seed_id：{generate_target['seed_id']}  生成变异器调用结束，用时：{end_time - start_time:.2f}s")
-            mutator_code = my_chilo_factory.llm_tool_box.get_python_block_content(mutator_code)  #获取python代码
+            mutator_code = my_chilo_factory.llm_tool_mutator_generator.get_python_block_content(mutator_code)  #获取python代码
             try:
                 mutator_code = mutator_code[0]
                 break

@@ -83,8 +83,35 @@ class ChiloFactory:
         self.mutator_fixer_logger = logger.setup_thread_logger("MutatorFixer", self.mutator_fixer_log_path)
         self.llm_logger = logger.setup_thread_logger("LLM", self.llm_log_path)
 
-        self.llm_tool_box = llm_tool.LLMTool(config['LLM']['API_KEY'], config['LLM']['MODEL'],
-                                             config['LLM']['BASE_URL'], self.llm_logger)  # LLM工具
+        # 为三个不同的任务创建独立的LLM工具实例
+        self.llm_tool_parser = llm_tool.LLMTool(
+            config['LLM']['LLM_PARSER']['API_KEY'], 
+            config['LLM']['LLM_PARSER']['MODEL'],
+            config['LLM']['LLM_PARSER']['BASE_URL'], 
+            self.llm_logger
+        )
+        
+        self.llm_tool_mutator_generator = llm_tool.LLMTool(
+            config['LLM']['LLM_MUTATOR_GENERATOR']['API_KEY'], 
+            config['LLM']['LLM_MUTATOR_GENERATOR']['MODEL'],
+            config['LLM']['LLM_MUTATOR_GENERATOR']['BASE_URL'], 
+            self.llm_logger
+        )
+        
+        self.llm_tool_structural_mutator = llm_tool.LLMTool(
+            config['LLM']['LLM_STRUCTURAL_MUTATOR']['API_KEY'], 
+            config['LLM']['LLM_STRUCTURAL_MUTATOR']['MODEL'],
+            config['LLM']['LLM_STRUCTURAL_MUTATOR']['BASE_URL'], 
+            self.llm_logger
+        )
+        
+        # Fixer使用的LLM工具
+        self.llm_tool_fixer = llm_tool.LLMTool(
+            config['LLM']['LLM_FIXER']['API_KEY'],
+            config['LLM']['LLM_FIXER']['MODEL'],
+            config['LLM']['LLM_FIXER']['BASE_URL'],
+            self.llm_logger
+        )
 
 
     def init_file_path(self):

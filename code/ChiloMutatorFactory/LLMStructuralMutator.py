@@ -279,14 +279,14 @@ Your generated SQL should be MAXIMALLY COMPLEX and target crash-prone areas. Pri
         while True:
             structural_mutate_llm_start_time = time.time()
             my_chilo_factory.structural_mutator_logger.info(f"seed_id：{target_seed_id}，准备调用LLM进行结构化变异")
-            after_mutate_testcase,up_token, down_token = my_chilo_factory.llm_tool_box.chat_llm(prompt, system_prompt)
+            after_mutate_testcase,up_token, down_token = my_chilo_factory.llm_tool_structural_mutator.chat_llm(prompt, system_prompt)
             all_up_token += up_token
             all_down_token += down_token
             llm_count += 1
             structural_mutate_llm_end_time = time.time()
             llm_use_time += structural_mutate_llm_end_time - structural_mutate_llm_start_time
             my_chilo_factory.structural_mutator_logger.info(f"seed_id：{target_seed_id}，调用LLM结束，用时：{structural_mutate_llm_end_time-structural_mutate_llm_start_time:.2f}s")
-            after_mutate_testcase = my_chilo_factory.llm_tool_box.get_sql_block_content(after_mutate_testcase)  # 提取内容
+            after_mutate_testcase = my_chilo_factory.llm_tool_structural_mutator.get_sql_block_content(after_mutate_testcase)  # 提取内容
             try:
                 after_mutate_testcase = after_mutate_testcase[0]
                 break

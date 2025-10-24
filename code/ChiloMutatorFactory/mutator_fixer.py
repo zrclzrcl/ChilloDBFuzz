@@ -213,10 +213,10 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory, thread_id=0):
                         semantics_fix_start_time = time.time()
                         my_chilo_factory.mutator_fixer_logger.info(
                             f"seed_id：{fix_seed_id}，准备调用LLM进行第 {semantic_error_count} 次语义修复")
-                        semantics_fix_result, semantic_up_token, semantic_down_token = my_chilo_factory.llm_tool_box.chat_llm(semantics_prompt)
+                        semantics_fix_result, semantic_up_token, semantic_down_token = my_chilo_factory.llm_tool_fixer.chat_llm(semantics_prompt)
                         llm_use_count += 1
                         semantic_error_llm_count += 1
-                        semantics_fix_result = my_chilo_factory.llm_tool_box.get_python_block_content(semantics_fix_result)
+                        semantics_fix_result = my_chilo_factory.llm_tool_fixer.get_python_block_content(semantics_fix_result)
                         semantic_up_token_all += semantic_up_token
                         semantic_down_token_all += semantic_down_token
                         my_chilo_factory.mutator_fixer_logger.info(
@@ -244,12 +244,12 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory, thread_id=0):
                     syntax_fix_start_time_llm = time.time()
                     my_chilo_factory.mutator_fixer_logger.info(
                         f"seed_id：{fix_seed_id}，等待调用LLM修复第 {syntax_error_count} 次语法问题")
-                    llm_syntax_fix, syntax_fix_up_token, syntax_fix_down_token = my_chilo_factory.llm_tool_box.chat_llm(fix_syntax_prompt, "You are an expert in debugging and repairing Python code. Fix the given Python code based on the user's requirements.")
+                    llm_syntax_fix, syntax_fix_up_token, syntax_fix_down_token = my_chilo_factory.llm_tool_fixer.chat_llm(fix_syntax_prompt, "You are an expert in debugging and repairing Python code. Fix the given Python code based on the user's requirements.")
                     llm_use_count += 1
                     syntax_llm_count += 1
                     syntax_fix_up_token_all += syntax_fix_up_token
                     syntax_fix_down_token_all += syntax_fix_down_token
-                    llm_syntax_fix = my_chilo_factory.llm_tool_box.get_python_block_content(llm_syntax_fix)
+                    llm_syntax_fix = my_chilo_factory.llm_tool_fixer.get_python_block_content(llm_syntax_fix)
                     syntax_fix_end_time_llm = time.time()
                     my_chilo_factory.mutator_fixer_logger.info(
                         f"seed_id：{fix_seed_id}，调用LLM修复第 {syntax_error_count} 次语法问题结束，用时：{syntax_fix_end_time_llm - syntax_fix_start_time_llm:.2f}s")

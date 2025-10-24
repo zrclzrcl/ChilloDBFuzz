@@ -211,7 +211,7 @@ def chilo_parser(chilo_factory: ChiloFactory):
                 parse_start_time = time.time()
                 chilo_factory.parser_logger.info(f"seed_id:{parse_target['seed_id']} 调用LLM解析开始")
                 prompt = _get_constant_prompt(need_parse_sql, chilo_factory.target_dbms, chilo_factory.target_dbms_version)
-                parse_msg, up_token, down_token = chilo_factory.llm_tool_box.chat_llm(prompt)
+                parse_msg, up_token, down_token = chilo_factory.llm_tool_parser.chat_llm(prompt)
                 up_token_all += up_token
                 down_token_all += down_token
                 parser_end_time = time.time()
@@ -219,7 +219,7 @@ def chilo_parser(chilo_factory: ChiloFactory):
                 chilo_factory.parser_logger.info(
                     f"seed_id:{parse_target['seed_id']} LLM解析结束，用时：{parser_end_time - parse_start_time:.2f}s")
                 llm_usd_time_all += parser_end_time - parse_start_time
-                parse_msg = chilo_factory.llm_tool_box.get_sql_block_content(parse_msg)
+                parse_msg = chilo_factory.llm_tool_parser.get_sql_block_content(parse_msg)
                 try:
                     parse_msg = parse_msg[0]
                     break
