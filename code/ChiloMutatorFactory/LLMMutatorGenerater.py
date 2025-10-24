@@ -8,65 +8,214 @@ from .chilo_factory import ChiloFactory
 
 def  _get_constant_mutator_prompt(parsed_sql:str, target_dbms, dbms_version):
     prompt = f"""
-Instruction: You are a DBMS fuzzing and SQL mutation expert. The input below is a test case annotated with "constant mutation masks" (mask format defined below). Your job is to produce a Python module that is import-safe and exposes a single callable mutation interface:
+Instruction: You are an **AGGRESSIVE DBMS fuzzing and mutation expert**. The input is a SQL test case with mutation masks. Your task is to generate a Python module that produces **CRASH-INDUCING** mutations.
 
-    mutate() -> str
+---
 
-Important module constraints (must be obeyed):
-- The produced Python code must be importable without side effects. **Do NOT** include any top-level executable code such as `if __name__ == "__main__":`, command-line parsing, or code that runs on import.
-- **Do NOT** print to stdout, write files, or perform network I/O. The module must be pure (it may use module-level constants or helper functions).
-- `mutate()` must accept **no required arguments** (no parameters) and must return a single `str` containing one fully mutated, executable SQL test case (possibly many statements separated by `;`) with **no masks remaining**.
-- Use **Python 3.12** and **only standard library** modules.
-- Keep code concise, well-commented, and robust (handle errors internally and raise meaningful exceptions if something is wrong).
+## 🎯 Primary Objective
 
-Target test case (for testing {target_dbms} version {dbms_version}):
+Generate SQL mutations that:
+1. **Maximize crash likelihood** - Target known vulnerability patterns
+2. **Explore edge cases** - Use boundary values, type confusion, extreme inputs
+3. **High diversity** - Every call to `mutate()` should produce different output
+
+---
+
+## 📋 Input Mask Types
+
+The input SQL contains 4 types of masks:
+
+### 1. CONSTANT
+Format: `[CONSTANT, number:X, type:<type>, ori:<value>]`
+
+**Mutation Strategy**:
+- **Boundary values**: 0, 1, -1, MAX_INT (9223372036854775807), MIN_INT (-9223372036854775808)
+- **Overflow triggers**: MAX_INT + 1, MIN_INT - 1
+- **Type-specific edges**:
+  - Integers: 127, 128, 32767, 32768, 2147483647, 2147483648
+  - Floats: 0.0, 1e308, -1e308, NaN, Infinity
+  - Strings: '', 'a'*10000, special chars (NULL byte, unicode edges)
+  - Blobs: x'', x'00', x'FF', randomblob(1000000)
+- **Special values**: NULL
+- **AFL-style mutations**: 
+  - Bit flip on original value
+  - Byte arithmetic (+1, -1, +128, -128)
+  - Integer interesting values (see AFL)
+
+### 2. OPERATOR
+Format: `[OPERATOR, number:X, category:<category>, ori:<op>]`
+
+**Mutation Strategy**:
+- **Semantic substitution**: Replace with operators from the same category
+  - Arithmetic: +, -, *, /, %
+  - Comparison: >, <, >=, <=, =, !=, <>, IS, IS NOT
+  - Logical: AND, OR
+  - Bitwise: &, |, <<, >>
+- **Cross-category**: Occasionally try operators from different categories (may cause errors, which is valuable for testing)
+
+### 3. FUNCTION
+Format: `[FUNCTION, number:X, category:<category>, ori:<func>]`
+
+**Mutation Strategy**:
+- **Same-category substitution**: Replace with functions from the same category
+  - Aggregate: SUM → AVG, COUNT, MAX, MIN, TOTAL, GROUP_CONCAT
+  - Scalar numeric: ABS → ROUND, CEILING, FLOOR, SIGN, SQRT
+  - Scalar string: UPPER → LOWER, LENGTH, TRIM, SUBSTR, REPLACE
+  - Datetime: datetime → date, time, julianday, strftime
+- **Cross-category** (advanced): Try incompatible functions to trigger type errors
+  - Example: SUM → UPPER (aggregate → string function)
+
+### 4. KEYWORD
+Format: `[KEYWORD, number:X, context:<context>, ori:<keyword_phrase>]`
+
+**Mutation Strategy** (context-specific):
+
+- **constraint**: NOT NULL ↔ UNIQUE ↔ PRIMARY KEY ↔ <empty>
+- **conflict**: OR REPLACE ↔ OR IGNORE ↔ OR FAIL ↔ OR ABORT ↔ OR ROLLBACK ↔ <empty>
+- **modifier**: DISTINCT ↔ ALL ↔ <empty>
+- **join**: INNER ↔ LEFT ↔ CROSS ↔ <comma>
+- **order**: ASC ↔ DESC
+- **existence_check**: IF EXISTS ↔ IF NOT EXISTS ↔ <empty>
+
+---
+
+## 🧬 Advanced Mutation Techniques
+
+### AFL-Style Binary Mutations (for CONSTANT)
+
+Implement these strategies for numeric constants:
+
+```python
+# Bit flip
+value = 1234
+mutated = value ^ (1 << random.randint(0, 63))  # Flip one random bit
+
+# Byte arithmetic
+mutated = value + random.choice([1, -1, 128, -128, 256, -256])
+
+# Interesting values (AFL's magic numbers)
+interesting_8 = [-128, -1, 0, 1, 16, 32, 64, 100, 127]
+interesting_16 = [-32768, -129, 128, 255, 256, 512, 1000, 1024, 4096, 32767]
+interesting_32 = [-2147483648, -100663046, -32769, 32768, 65535, 65536, 100663045, 2147483647]
+```
+
+### Vulnerability-Driven Mutations (for ALL types)
+
+**Known {target_dbms} vulnerability patterns** to incorporate:
+
+1. **Extreme numeric values** (CONSTANT):
+   - Window functions with huge frame ranges: 999999999
+   - printf format width: %999999999d
+   - Large blob allocations: randomblob(2147483647)
+
+2. **Type confusion** (OPERATOR + CONSTANT):
+   - CAST with incompatible types
+   - Arithmetic on incompatible types
+   - Example: CAST(9223372036854775808 AS INTEGER)
+
+3. **Recursive bombs** (KEYWORD + CONSTANT):
+   - WITH RECURSIVE with large iteration counts
+   - Nested subqueries (depth > 100)
+
+4. **Conflict resolution edge cases** (KEYWORD):
+   - OR REPLACE with PRIMARY KEY violations
+   - OR IGNORE with UNIQUE constraint violations
+
+---
+
+## 📝 Implementation Requirements
+
+### Module Structure
+
+Generate a complete Python module with:
+
+```python
+import random
+import struct
+
+# Mask definitions
+MASKS = {{
+    1: {{'type': 'CONSTANT', 'ori': 10, 'sql_type': 'integer'}},
+    2: {{'type': 'OPERATOR', 'ori': '+', 'category': 'arithmetic'}},
+    # ... all masks
+}}
+
+def mutate() -> str:
+    \"\"\"
+    Generate one mutated SQL statement.
+    Returns: Complete SQL string with all masks replaced.
+    \"\"\"
+    # Implementation here
+    pass
+```
+
+### Mutation Logic
+
+**For each call to `mutate()`**:
+
+1. **Select masks to mutate**: Randomly choose 30-70% of masks (at least 1)
+2. **Choose mutation mode** for selected masks:
+   - 40% - Fixed candidates (boundary values, same-category substitutions)
+   - 40% - AFL-style binary mutations (for CONSTANT)
+   - 20% - Random/creative mutations (cross-category, extreme values)
+3. **Replace masks**: 
+   - Selected masks → mutated values
+   - Unselected masks → original values
+4. **Return valid SQL**: Ensure proper quoting for strings, correct syntax
+
+### Code Quality
+
+- Use **only Python standard library** (random, struct, re, etc.)
+- **No side effects**: No prints, no file I/O, no network calls
+- **No top-level execution**: No `if __name__ == "__main__":`
+- **Error handling**: Handle edge cases gracefully
+- **Comments**: Explain mutation choices
+
+---
+
+## 🎯 Target: {target_dbms} version {dbms_version}
+
+### DBMS-Specific Considerations
+
+- SQLite supports: `OR IGNORE`, `OR REPLACE`, etc.
+- Window functions: ROWS BETWEEN, RANGE BETWEEN
+- FTS3/FTS5 virtual tables: MATCH queries
+- Built-in functions: randomblob(), zeroblob(), printf()
+
+---
+
+## 📥 Input SQL
+
+```sql
 {parsed_sql}
+```
 
-Constant mask format (appearing in the input):
-[CONSTANT, number:<n>, type:<type>, ori:<original_value>]
-Example:
-INSERT INTO t1 VALUES ([CONSTANT, number:1, type:smallint(4), ori:9410], [CONSTANT, number:2, type:smallint(4), ori:9412]);
+---
 
-Task & Requirements (precise and enforceable):
+## 📤 Output Format
 
-1. Parsing:
-   - Parse every mask in `{parsed_sql}` and capture its `number`, `type`, `ori`, and the token's SQL context (e.g., INSERT value, WHERE predicate, LIMIT, function argument, comparison, etc.).
-   - Do not change schema identifiers (table/column names), only replace masks with concrete values.
+Provide the complete Python module inside a code block:
 
-2. Mutation candidates:
-   - For each mask produce at least **8 diverse, context-aware candidates** based on the annotated `type`, `ori`, and SQL position.
-   - Candidate categories should include (but are not limited to): boundary values, out-of-range, negatives, zero, NULL (only when valid in context), empty string, very long strings, SQL-injection-like payloads (escaped so the resulting SQL is syntactically valid), malformed dates, floating-point edge cases, binary/hex values where appropriate, LIKE patterns, control chars, type-conversion triggers, AFL-style binary mutations, and semantic special values (e.g., MAX_INT, MIN_INT).
+```python
+(entire module here)
+```
 
-3. Two mutation modes per mask:
-   - Deterministic: select one candidate from the candidate list (useful for reproducible tests).
-   - Random: produce AFL-style / random-bit mutated values (to increase crash discovery).
+**Do NOT include**:
+- Explanations outside the code block
+- Example usage or test code
+- Comments explaining the task (only implementation comments)
 
-4. mutate() behavior:
-   - Each call to `mutate()` must randomly select **at least one** mask to replace with a non-`ori` candidate; masks not selected must be replaced by their `ori` value (no masks left).
-   - `mutate()` must return a complete SQL string (type `str`) with **all masks replaced** and syntactically valid for the annotated types (numbers unquoted, strings quoted and escaped, dates parsable, etc.).
-   - Preserve original comments and statement separators; do not inject or remove semicolons or comments.
-   - Ensure high variation across multiple `mutate()` calls (i.e., probability of repeating the exact same output should be low).
-   - `mutate()` must not perform side effects (no file writes, no prints).
+---
 
-5. Implementation constraints and quality:
-   - Only use standard library (e.g., `re`, `random`, `datetime`, `json`, `itertools`, `math`, `binascii`).
-   - Provide a modular mutation-strategy factory: a function that, given a mask's `type`/`ori`/context, returns the candidate list and a function to generate random variants.
-   - Include inline comments explaining mutation choices and any context assumptions.
-   - Include minimal but sufficient error checking; if the input masks cannot be parsed, raise a descriptive Exception (do not crash silently).
+## 🚀 Now Generate
 
-6. Output format for your reply when you produce the code:
-   - Provide **only** the Python module inside a single fenced code block labeled `python`:
-     ```python
-     (entire module text here)
-     ```
-   - Do **not** include any additional explanatory text inside the code block. Any human-readable explanation must be outside the code block (but when the LLM is used programmatically you can require it to return only the code block to facilitate automated extraction).
+Create a Python module that implements aggressive, crash-inducing mutations for the above SQL targeting {target_dbms} version {dbms_version}.
 
-7. Notes for implementer:
-   - The `call_mutate_from_file(filepath)` loader in the caller will import this module and call `mutate()` with no arguments; ensure the function signature matches exactly.
-   - Avoid deterministic seeding unless used only to produce reproducible "deterministic" candidates; for the random mode rely on `random` module without global seeding.
-   - Keep the module size reasonable and avoid heavy complexity; focus on high-quality candidate generation and correct replacement semantics.
-
-Now, produce the Python module that satisfies all the above constraints.
+**Remember**:
+- High diversity (different output each time)
+- Include AFL-style binary mutations (bit flip, interesting values)
+- Target known vulnerability patterns
+- Balance fixed candidates (40%), AFL mutations (40%), and random mutations (20%)
 """
     return prompt
 

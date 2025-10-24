@@ -9,85 +9,176 @@ from .chilo_factory import ChiloFactory
 
 def _get_constant_prompt(ori_sql, target_dbms, dbms_version):
     prompt = f"""
-Instruction: You are a **DBMS fuzz testing expert**. Your task is to **identify and annotate all constants** in the given MySQL test case one by one.
+Instruction: You are a **DBMS fuzzing expert**. Your task is to identify and annotate all **mutable components** in the given SQL test case.
 
 ---
 
-### Annotation Format
-Each constant should be annotated as:
-[CONSTANT, number:X, type:<type>, ori:<original_value>]
-
-Where:
-- **CONSTANT** → marks this token as a constant mask.  
-- **number:X** → index of the constant in this test case, starting from 1 and increasing sequentially.  
-- **type** → the constant type recognized in the target DBMS (e.g., smallint(4), char, enum_storage_engine, geometry_text, sql_text, etc.).  
-- **ori** → the literal value of the constant in the original SQL.
+### Target DBMS
+{target_dbms} version {dbms_version}
 
 ---
 
-### Rules and Requirements
+### Annotation Types
 
-1. **Scope of constants**  
-   Include: strings, numbers, date/time values, enum values, and text literals in SQL statements.  
-   Exclude: table names, column names, aliases, function names, and SQL keywords.
+You must identify and annotate the following 4 types of mutable components:
 
-2. **Type inference**  
-   Infer the specific constant type based on context — do not use generic or vague labels.  
-   Examples:  
-   - `smallint(4)` default `'0000'` → `type:char`  
-   - `ENGINE=MyISAM` → `type:enum_storage_engine`  
-   - `ST_GeomFromText('LineString(...)')` → `type:geometry_text`  
-   - `PREPARE ... FROM "SQL"` → `type:sql_text`
+#### 1. CONSTANT - Literal Values
+Any literal constant in the SQL: numbers, strings, dates, blobs, NULL, etc.
 
-3. **Executability requirement**  
-   The annotations are used for fuzzing mutation. After replacing constants with new values, the SQL must still be syntactically valid and executable.
+Examples:
+- Numbers: `42`, `-1`, `3.14`, `9223372036854775807`
+- Strings: `'hello'`, `"world"`
+- NULL: `NULL`
+- Blobs: `x'1234'`
 
-4. **Numbering rule**  
-   - Start numbering from **1**, in order of appearance.  
-   - Continue numbering across multiple statements without resetting or duplication.
+Annotation format:
+```
+[CONSTANT, number:X, type:<inferred_type>, ori:<original_value>]
+```
 
-5. **Output format**  
-   - The final annotated SQL **must** be wrapped in:  
-     \n```sql\n(result)\n```  
-   - Do **not** wrap explanations or other text in code blocks.  
-   - The result should be a single complete SQL output, easily extractable.
+#### 2. OPERATOR - Operators
+Any operator that can be replaced with similar operators.
+
+Examples:
+- Arithmetic: `+`, `-`, `*`, `/`, `%`
+- Comparison: `>`, `<`, `>=`, `<=`, `=`, `!=`, `<>`
+- Logical: `AND`, `OR`
+- Bitwise: `&`, `|`, `<<`, `>>`
+
+Annotation format:
+```
+[OPERATOR, number:X, category:<arithmetic|comparison|logical|bitwise>, ori:<original_operator>]
+```
+
+#### 3. FUNCTION - Function Names
+Built-in function names that can be replaced with similar functions.
+
+Examples:
+- Aggregate: `SUM`, `AVG`, `COUNT`, `MAX`, `MIN`
+- Scalar: `ABS`, `ROUND`, `UPPER`, `LOWER`, `LENGTH`
+- Date: `datetime`, `date`, `julianday`
+
+Annotation format:
+```
+[FUNCTION, number:X, category:<aggregate|scalar_numeric|scalar_string|datetime>, ori:<original_function>]
+```
+
+**Important**: Only annotate the function NAME, not the parentheses or arguments.
+Example: `SUM(x)` → `[FUNCTION, number:1, category:aggregate, ori:SUM](x)`
+
+#### 4. KEYWORD - Mutable Keywords
+Keywords that can be changed to alter SQL behavior, but NOT core SQL structure keywords.
+
+**Mutable keywords** (should be annotated):
+- Constraint keywords: `NOT NULL`, `UNIQUE`, `PRIMARY KEY`, `FOREIGN KEY`
+- Conflict resolution: `OR REPLACE`, `OR IGNORE`, `OR FAIL`, `OR ABORT`, `OR ROLLBACK`
+- Modifiers: `DISTINCT`, `ALL`
+- Temporality: `TEMPORARY`, `TEMP`
+- Existence checks: `IF EXISTS`, `IF NOT EXISTS`
+- Join types: `INNER`, `LEFT`, `RIGHT`, `CROSS`, `OUTER`
+- Order: `ASC`, `DESC`
+- Transaction types: `DEFERRED`, `IMMEDIATE`, `EXCLUSIVE`
+- Trigger timing: `BEFORE`, `AFTER`, `INSTEAD OF`
+- Foreign key actions: `CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION`
+- Collation: `COLLATE BINARY`, `COLLATE NOCASE`, `COLLATE RTRIM`
+
+**Immutable keywords** (DO NOT annotate):
+- Core structure: `SELECT`, `FROM`, `WHERE`, `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `DROP`, `ALTER`, `TABLE`, `INDEX`, `VIEW`, `TRIGGER`
+- Data definition: `INT`, `INTEGER`, `REAL`, `TEXT`, `BLOB` (treat as immutable for simplicity)
+- Control flow: `BEGIN`, `END`, `IF`, `THEN`, `ELSE`
+
+Annotation format:
+```
+[KEYWORD, number:X, context:<brief_context>, ori:<original_keyword_phrase>]
+```
+
+Example contexts:
+- `context:constraint` - for NOT NULL, UNIQUE
+- `context:conflict` - for OR REPLACE, OR IGNORE
+- `context:modifier` - for DISTINCT, ALL
+- `context:join` - for INNER, LEFT
+- `context:order` - for ASC, DESC
+
+---
+
+### Annotation Rules
+
+1. **Numbering**: Start from 1, increment sequentially, no duplicates.
+
+2. **Do NOT annotate**:
+   - Table names, column names, aliases
+   - Core SQL keywords (SELECT, FROM, WHERE, etc.)
+   - Schema identifiers
+   - Parentheses, commas, semicolons
+
+3. **Executability**: The annotated SQL must remain syntactically valid after replacing masks with their original values.
+
+4. **Consecutive keywords**: If multiple mutable keywords appear together, annotate them as ONE mask.
+   Example: `NOT NULL` → `[KEYWORD, number:1, context:constraint, ori:NOT NULL]`
+   Example: `IF NOT EXISTS` → `[KEYWORD, number:2, context:existence_check, ori:IF NOT EXISTS]`
+
+5. **Output format**: Wrap the result in:
+   ```sql
+   (annotated SQL)
+   ```
 
 ---
 
 ### Examples
-**Input:**
+
+**Input 1:**
 ```sql
-SET @previous_binlog_format__htnt542nh=@@GLOBAL.binlog_format; 
-SET binlog_format=STATEMENT; 
-SET default_storage_engine=ARCHIVE; 
-CREATE TABLE t1 ( Period smallint(4) unsigned zerofill DEFAULT '0000' NOT NULL, Varor_period smallint(4) unsigned DEFAULT '0' NOT NULL ) ENGINE=archive; 
-INSERT INTO t1 VALUES (9410,9412);
+CREATE TABLE t (x INTEGER PRIMARY KEY, y TEXT NOT NULL);
+INSERT INTO t VALUES (10, 'hello');
+SELECT SUM(x) FROM t WHERE x > 5 ORDER BY y DESC;
 ```
-**Output:**
+
+**Output 1:**
 ```sql
-SET @previous_binlog_format__htnt542nh=@@GLOBAL.binlog_format;
-SET binlog_format=[CONSTANT, number:1, type:enum_binlog_format, ori:STATEMENT];
-SET default_storage_engine=[CONSTANT, number:2, type:enum_storage_engine, ori:ARCHIVE];
-CREATE TABLE t1 ( 
-Period smallint(4) unsigned zerofill DEFAULT [CONSTANT, number:3, type:char, ori:0000] NOT NULL, 
-Varor_period smallint(4) unsigned DEFAULT [CONSTANT, number:4, type:char, ori:0] NOT NULL 
-) ENGINE=[CONSTANT, number:5, type:enum_storage_engine, ori:archive];
-INSERT INTO t1 VALUES ([CONSTANT, number:6, type:smallint(4), ori:9410], [CONSTANT, type:smallint(4), ori:9412]);
+CREATE TABLE t (
+    x INTEGER [KEYWORD, number:1, context:constraint, ori:PRIMARY KEY], 
+    y TEXT [KEYWORD, number:2, context:constraint, ori:NOT NULL]
+);
+INSERT INTO t VALUES (
+    [CONSTANT, number:3, type:integer, ori:10], 
+    [CONSTANT, number:4, type:string, ori:hello]
+);
+SELECT [FUNCTION, number:5, category:aggregate, ori:SUM](x) 
+FROM t 
+WHERE x [OPERATOR, number:6, category:comparison, ori:>] [CONSTANT, number:7, type:integer, ori:5] 
+ORDER BY y [KEYWORD, number:8, context:order, ori:DESC];
 ```
-**Input:**
+
+**Input 2:**
 ```sql
-CREATE TABLE t1 ( fid INT NOT NULL AUTO_INCREMENT PRIMARY KEY, g GEOMETRY NOT NULL SRID 0, SPATIAL KEY(g) ) ENGINE=MyISAM; 
-INSERT INTO t1 (g) VALUES (ST_GeomFromText('LineString(150 150, 150 150)')); 
+INSERT OR REPLACE INTO t VALUES (1);
+SELECT AVG(a + b) FROM t WHERE c != 10;
 ```
-**Output:**
+
+**Output 2:**
 ```sql
-CREATE TABLE t1 ( fid INT NOT NULL AUTO_INCREMENT PRIMARY KEY, g GEOMETRY NOT NULL SRID 0, SPATIAL KEY(g) ) ENGINE=MyISAM; 
-INSERT INTO t1 (g) VALUES (ST_GeomFromText([CONSTANT, number:1, type:geometry_text, ori:LineString(150 150, 150 150)]));
+INSERT [KEYWORD, number:1, context:conflict, ori:OR REPLACE] INTO t VALUES ([CONSTANT, number:2, type:integer, ori:1]);
+SELECT [FUNCTION, number:3, category:aggregate, ori:AVG](
+    a [OPERATOR, number:4, category:arithmetic, ori:+] b
+) 
+FROM t 
+WHERE c [OPERATOR, number:5, category:comparison, ori:!=] [CONSTANT, number:6, type:integer, ori:10];
 ```
-Now, please annotate the following SQL statement, which is used to test {target_dbms} version {dbms_version}:
+
+---
+
+### Now Annotate
+
+Please annotate the following SQL for fuzzing {target_dbms} version {dbms_version}:
+
 ```sql
 {ori_sql}
 ```
+
+**Remember**: 
+- Annotate CONSTANT, OPERATOR, FUNCTION, KEYWORD
+- Do NOT provide alternative values
+- Ensure the result is syntactically valid
 """
     return prompt
 

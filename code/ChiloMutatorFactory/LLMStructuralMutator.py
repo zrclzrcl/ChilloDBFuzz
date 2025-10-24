@@ -4,85 +4,180 @@ from .chilo_factory import ChiloFactory
 
 def _get_structural_prompt(sql, target_dbms, dbms_version):
     prompt = f"""
-You are an expert in database fuzzing whose goal is to **TRIGGER CRASHES AND BUGS** in {target_dbms} version {dbms_version}. Perform aggressive structural mutations on the provided SQL test case to maximize the likelihood of exposing vulnerabilities, edge cases, and crash-inducing behaviors.
+You are an **ELITE database security researcher** specializing in {target_dbms} v{dbms_version} crash discovery. Your mission is to generate **CRASH-INDUCING SQL** by learning from REAL historical vulnerabilities.
 
-🎯 PRIMARY OBJECTIVE: Generate SQL that is **HIGHLY LIKELY TO CRASH** or trigger anomalous behaviors, NOT just syntactically correct variations.
+🎯 PRIMARY OBJECTIVE: Generate SQL that is **HIGHLY LIKELY TO CRASH** {target_dbms} v{dbms_version}, NOT just syntactically complex variations.
 
-📋 AGGRESSIVE MUTATION STRATEGIES (Apply 3-5 of these):
+---
 
-1. **EXTREME COMPLEXITY INJECTION**:
-   - Add 5-10 levels of deeply nested subqueries
-   - Use recursive CTEs with large recursion depths (e.g., RECURSIVE with UNION ALL, 100+ iterations)
-   - Combine multiple window functions (ROW_NUMBER, RANK, LAG, LEAD, NTILE) in complex expressions
-   - Create circular dependencies between views/tables if possible
-   - Mix correlated and non-correlated subqueries in unexpected places
+## 📚 LEARN FROM REAL CRASHES (Few-Shot Examples)
 
-2. **TYPE CONFUSION & CONVERSION CHAOS**:
-   - Force implicit type conversions between incompatible types (e.g., CAST(geometry AS int), CAST(NULL AS custom_type))
-   - Mix string, numeric, date, binary, and NULL types in arithmetic operations
+These are ACTUAL SQL patterns that triggered crashes in SQLite. Study them and generate SIMILAR patterns:
+
+### Example 1: CVE-2019-8457 - Window Function Stack Overflow
+**Trigger Pattern**: Extreme window frame range causes stack overflow
+```sql
+CREATE TABLE t1(x INTEGER);
+INSERT INTO t1 VALUES(1),(2),(3);
+SELECT max(x) OVER (
+    ORDER BY x 
+    ROWS BETWEEN 1 PRECEDING AND 1000000000 FOLLOWING
+) FROM t1;
+```
+**Why it crashes**: SQLite allocates an array for 1 billion rows, malloc fails, NULL pointer dereference
+**Key pattern**: Window function + extreme ROWS BETWEEN range
+
+### Example 2: CVE-2020-13871 - FTS3 Use-After-Free
+**Trigger Pattern**: FTS3 virtual table with complex MATCH query
+```sql
+CREATE VIRTUAL TABLE t1 USING fts3(content TEXT);
+INSERT INTO t1 VALUES('test data ' || randomblob(100000));
+SELECT * FROM t1 WHERE t1 MATCH 'a*' || 'b*' || 'c*' || 'd*' || 'e*';
+```
+**Why it crashes**: Complex wildcard pattern with large data causes memory corruption
+**Key pattern**: FTS virtual table + wildcard explosion + large data
+
+### Example 3: CVE-2022-35737 - Printf Format String Array Overflow
+**Trigger Pattern**: Extreme format width in printf
+```sql
+SELECT printf('%.*c', 2147483647, 'x');
+SELECT printf('%999999999d', 123);
+```
+**Why it crashes**: Width specifier causes integer overflow in buffer allocation
+**Key pattern**: printf() + extreme width specifier
+
+### Example 4: CVE-2020-13632 - Recursive CTE Infinite Loop
+**Trigger Pattern**: Badly designed recursive CTE
+```sql
+WITH RECURSIVE c(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x+1 FROM c WHERE x < 100000
+)
+SELECT sum(x) FROM c;
+```
+**Why it crashes**: Stack overflow from deep recursion, or excessive memory allocation
+**Key pattern**: WITH RECURSIVE + large iteration count
+
+### Example 5: Integer Overflow in Expression
+**Trigger Pattern**: Arithmetic overflow in constant folding
+```sql
+SELECT CAST(9223372036854775807 AS INTEGER) + 1;
+SELECT CAST('9223372036854775808' AS INTEGER);
+SELECT 9223372036854775807 * 2;
+```
+**Why it crashes**: Integer overflow handling bug, signed/unsigned confusion
+**Key pattern**: MAX_INT arithmetic operations
+
+### Example 6: Type Confusion in UNION
+**Trigger Pattern**: Mismatched types in UNION with aggressive CAST
+```sql
+SELECT CAST(randomblob(1000000) AS INTEGER)
+UNION ALL
+SELECT CAST('not a number' AS INTEGER)
+UNION ALL
+SELECT CAST(1e308 AS INTEGER);
+```
+**Why it crashes**: Type conversion edge cases, buffer overflow in CAST implementation
+**Key pattern**: UNION + aggressive CAST + extreme values
+
+### Example 7: Nested Aggregate Complexity
+**Trigger Pattern**: Deeply nested aggregates with window functions
+```sql
+SELECT 
+    SUM(AVG(MAX(x))) OVER (
+        PARTITION BY COUNT(y) 
+        ORDER BY TOTAL(z)
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    )
+FROM (
+    SELECT randomblob(1000) as x, randomblob(1000) as y, randomblob(1000) as z
+    FROM generate_series(1, 1000)
+);
+```
+**Why it crashes**: Complex aggregate nesting confuses query optimizer, memory corruption
+**Key pattern**: Nested aggregates + window functions + large data
+
+### Example 8: Trigger Cascading Chaos
+**Trigger Pattern**: Recursive trigger invocations
+```sql
+CREATE TABLE t1(x INT);
+CREATE TRIGGER trig1 AFTER INSERT ON t1 BEGIN
+    INSERT INTO t1 SELECT x+1 FROM t1 WHERE x < 100;
+END;
+INSERT INTO t1 VALUES(1);
+```
+**Why it crashes**: Trigger recursion depth limit bypass, stack overflow
+**Key pattern**: Self-referencing trigger + recursive INSERT
+
+---
+
+## 🎯 YOUR MISSION: Apply These Patterns
+
+Based on the above REAL crash examples, perform **VULNERABILITY-DRIVEN** mutations on the input SQL:
+
+📋 CRASH-INDUCING MUTATION STRATEGIES (Apply 3-5):
+
+1. **WINDOW FUNCTION ATTACKS** (模仿 CVE-2019-8457):
+   - Add window functions with extreme ROWS BETWEEN ranges (e.g., 999999999 FOLLOWING)
+   - Combine multiple window functions in nested expressions
+   - Use RANGE BETWEEN with extreme values
+   - Mix window functions with large data generation (randomblob, generate_series)
+   - Example pattern: `SELECT func(x) OVER (ROWS BETWEEN 1000000000 PRECEDING AND 1000000000 FOLLOWING)`
+
+2. **VIRTUAL TABLE EXPLOITATION** (模仿 CVE-2020-13871):
+   - Create FTS3/FTS5 virtual tables
+   - Insert large blobs or text data (randomblob(100000+))
+   - Use complex MATCH queries with wildcard explosion ('a*' || 'b*' || ... repeat 100+ times)
+   - Example pattern: `CREATE VIRTUAL TABLE t USING fts3(x); ... SELECT * FROM t WHERE MATCH 'pattern*'`
+
+3. **PRINTF/FORMAT STRING ATTACKS** (模仿 CVE-2022-35737):
+   - Inject printf() calls with extreme format width specifiers
+   - Use %.*c, %999999999d, %2147483647s patterns
+   - Combine with randomblob or long strings
+   - Example pattern: `SELECT printf('%.*c', 2147483647, 'x')`
+
+4. **RECURSIVE CTE BOMBS** (模仿 CVE-2020-13632):
+   - Add WITH RECURSIVE with large iteration limits (50000+)
+   - Create recursive structures with UNION ALL
+   - Combine with aggregates or complex expressions
+   - Example pattern: `WITH RECURSIVE c AS (SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<100000) SELECT * FROM c`
+
+5. **INTEGER OVERFLOW TRIGGERS** (模仿 Example 5):
+   - Use MAX_INT (9223372036854775807) in arithmetic operations
+   - CAST extreme string values to INTEGER
+   - Arithmetic: MAX_INT + 1, MAX_INT * 2, etc.
+   - Example pattern: `SELECT CAST(9223372036854775807 AS INTEGER) + 1`
+
+6. **TYPE CONFUSION & CAST CHAOS** (模仿 Example 6):
+   - Force CAST between incompatible types (blob→int, float→text, etc.)
    - Use UNION with mismatched column types
-   - Apply aggregate functions on incompatible types
-   - Create computed columns with ambiguous type inference
+   - Combine extreme values with CAST (1e308, randomblob(1000000))
+   - Example pattern: `SELECT CAST(randomblob(100000) AS INTEGER) UNION ALL SELECT CAST(1e308 AS INTEGER)`
 
-3. **BOUNDARY & EDGE CASE EXPLOITATION**:
-   - Use extreme values: INT_MAX, INT_MIN, very large floats (1e308), negative zeros
-   - Empty strings, single quotes, NULL bytes (\\x00), unicode edge cases
-   - Zero-length arrays, empty JSON/XML, malformed structures
-   - Division by zero, modulo by zero, negative array indices
-   - Overflow-inducing arithmetic (e.g., MAX_INT + 1, factorial of large numbers)
+7. **AGGREGATE NESTING ATTACKS** (模仿 Example 7):
+   - Nest multiple aggregates (SUM(AVG(MAX(...))))
+   - Combine with window functions
+   - Use large data sources (randomblob, generate_series)
+   - Example pattern: `SELECT SUM(AVG(x)) OVER (...) FROM (SELECT randomblob(1000) FROM ...)`
 
-4. **ADVANCED SQL FEATURES (DBMS-SPECIFIC)**:
-   - **{target_dbms} specific functions**: Use obscure built-in functions, system functions, version-specific features
-   - **Window functions**: Complex PARTITION BY with multiple columns, ORDER BY with edge cases, RANGE/ROWS frame specifications
-   - **JSON/XML operations**: Deeply nested paths, malformed JSON/XML, type mismatches in path expressions
-   - **Full-text search**: Complex text search queries with unicode, special characters, phrase matching edge cases
-   - **Aggregate functions**: Nested aggregates, custom aggregates, GROUP BY with HAVING complexity, ROLLUP/CUBE/GROUPING SETS
-   - **Collation/Character sets**: Mix different collations, character set conversions, binary vs case-insensitive comparisons
-   - **Triggers**: Cascading triggers, multi-level trigger chains, trigger timing edge cases (BEFORE/AFTER/INSTEAD OF)
-   - **Views**: Materialized views, updateable views, views referencing views with circular-like patterns
-   - **Indexes**: Partial indexes, expression-based indexes, multi-column indexes with edge cases
-   - **Constraints**: Complex CHECK constraints, deferred constraints, constraint violations in edge cases
+8. **TRIGGER RECURSION** (模仿 Example 8):
+   - Create self-referencing triggers
+   - AFTER INSERT/UPDATE triggers that modify the same table
+   - Cascading trigger chains
+   - Example pattern: `CREATE TRIGGER t AFTER INSERT ON x BEGIN INSERT INTO x SELECT ...; END`
 
-5. **CUSTOM FUNCTIONS & STORED PROCEDURES**:
-   - Create user-defined functions (UDF) with recursive calls
-   - Define stored procedures with complex control flow (nested loops, exception handlers)
-   - Use triggers with cascading actions
-   - Create functions that call themselves or other functions recursively
-   - Mix deterministic and non-deterministic functions
+9. **MEMORY STRESS PATTERNS**:
+   - Use randomblob() with extreme sizes (100000+)
+   - Generate large result sets (CROSS JOIN, generate_series)
+   - String concatenation bombs ('x' || 'x' || ... repeat many times)
+   - Example pattern: `SELECT randomblob(2147483647)` or `SELECT 'a' || 'b' || ... (repeat 10000 times)`
 
-6. **TRANSACTION & CONCURRENCY EDGE CASES**:
-   - BEGIN/COMMIT/ROLLBACK with nested transactions
-   - SAVEPOINT with edge cases (rolling back to non-existent savepoints)
-   - Mix DDL and DML in transactions
-   - Use LOCK TABLES with conflicting lock types
-   - Create temporary tables inside transactions and drop them ambiguously
-
-7. **SCHEMA MANIPULATION CHAOS**:
-   - ALTER TABLE with incompatible type changes
-   - DROP and CREATE same object in rapid succession
-   - Add constraints that conflict with existing data
-   - Rename tables/columns while they're being referenced
-   - Create indexes on expressions that might fail
-
-8. **EXTREME DATA GENERATION**:
-   - INSERT with SELECT generating 1000+ rows
-   - Self-joins creating cartesian products
-   - Generate series with extreme ranges
-   - Use CROSS JOIN to create exponential row explosions (controlled to avoid timeout)
-
-9. **EXPRESSION COMPLEXITY**:
-   - 10+ levels of CASE WHEN nesting
-   - Complex boolean expressions with AND/OR/NOT, precedence ambiguity
-   - Arithmetic expressions with mixed operators and parentheses
-   - String concatenation with NULL handling edge cases
-   - Pattern matching with backtracking-heavy regex
-
-10. **ERROR-PRONE PATTERNS**:
-    - Access non-existent columns/tables and catch errors
-    - Out-of-bounds array/string access
-    - Invalid format strings in date/number formatting
-    - Circular foreign key references
-    - Self-referencing views or recursive definitions
+10. **CONSTRAINT VIOLATION PATTERNS**:
+   - Combine OR REPLACE/OR IGNORE with constraint conflicts
+   - Foreign key cascading with circular references
+   - CHECK constraints that reference complex expressions
+   - Example pattern: `INSERT OR REPLACE INTO t PRIMARY KEY violations`
 
 ⚠️ CRITICAL CONSTRAINTS:
 1. **Execution time**: Keep operations fast (<1 second). Avoid actual infinite loops, but create complex-enough structures that approach time limits.
@@ -90,24 +185,64 @@ You are an expert in database fuzzing whose goal is to **TRIGGER CRASHES AND BUG
 3. **Pure SQL**: Output only SQL statements, no comments or explanations in the code block.
 4. **Semicolon termination**: Each statement ends with `;`.
 
-🎲 MUTATION INTENSITY: **HIGH**
-- Perform **RADICAL transformations**, not minor tweaks
-- Add 5-15 new SQL statements
-- Combine multiple mutation strategies
-- Maximize structural complexity while maintaining executability
+---
 
-📤 OUTPUT FORMAT:
-Return ONLY the mutated SQL wrapped as:
-```sql
-(your mutated SQL here)
-```
+## 🎲 MUTATION GUIDELINES
 
-📥 INPUT TEST CASE:
+**Intensity**: **EXTREME** - This is {target_dbms} v{dbms_version}, apply patterns from the crash examples above
+
+**What to do**:
+1. **Study the 8 crash examples** at the top - these are REAL CVEs
+2. **Identify 3-5 patterns** that can be applied to the input SQL
+3. **Combine patterns** for maximum crash potential (e.g., window function + extreme values + type confusion)
+4. **Add 5-20 new SQL statements** that implement these patterns
+5. **Keep the original SQL's tables/data** but transform the queries aggressively
+
+**What to prioritize**:
+- ✅ Window functions with extreme ranges (999999999)
+- ✅ printf() with extreme format widths (%2147483647d)
+- ✅ WITH RECURSIVE with large iterations (50000+)
+- ✅ CAST with incompatible types + extreme values
+- ✅ FTS3/FTS5 virtual tables with wildcard explosions
+- ✅ randomblob() with extreme sizes (1000000+)
+- ✅ Self-referencing triggers
+- ✅ Integer overflow arithmetic (MAX_INT + 1)
+
+**What to avoid**:
+- ❌ Simple value changes (that's for constant mutation)
+- ❌ Minor tweaks (we want RADICAL transformation)
+- ❌ Generic complexity without crash potential
+- ❌ Patterns NOT based on the examples above
+
+---
+
+## 📥 INPUT TEST CASE
+
+Transform this SQL using crash-inducing patterns:
+
 ```sql
 {sql}
 ```
 
-🚀 NOW GENERATE: Apply 3-5 mutation strategies to create a **CRASH-INDUCING** SQL test case for {target_dbms} version {dbms_version}. Be aggressive, creative, and target known database vulnerability patterns!
+---
+
+## 📤 OUTPUT FORMAT
+
+Return ONLY the mutated SQL wrapped as:
+
+```sql
+(your crash-inducing mutated SQL here)
+```
+
+**No explanations, no comments, just pure SQL.**
+
+---
+
+## 🚀 NOW GENERATE
+
+Apply 3-5 crash-inducing patterns from the examples above to transform the input SQL into a {target_dbms} v{dbms_version} crash trigger. 
+
+**Remember**: You're not just making it complex - you're applying REAL vulnerability patterns that ACTUALLY crashed SQLite!
 """
     return prompt
 
