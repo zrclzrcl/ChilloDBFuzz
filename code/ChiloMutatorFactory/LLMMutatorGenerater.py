@@ -233,6 +233,7 @@ def chilo_mutator_generator(my_chilo_factory: ChiloFactory):
         mutate_time = generate_target['mutate_time']
         parsed_sql = my_chilo_factory.all_seed_list.seed_list[generate_target['seed_id']].parser_content   #拿出对应的已经解析过的内容
         prompt = _get_constant_mutator_prompt(parsed_sql, my_chilo_factory.target_dbms, my_chilo_factory.target_dbms_version)  #构建提示词
+        mutator_code_success = False
         while True:
             start_time = time.time()
             my_chilo_factory.mutator_generator_logger.info(
@@ -247,18 +248,30 @@ def chilo_mutator_generator(my_chilo_factory: ChiloFactory):
             mutator_code = my_chilo_factory.llm_tool_mutator_generator.get_python_block_content(mutator_code)  #获取python代码
             try:
                 mutator_code = mutator_code[0]
+                mutator_code_success = True
                 break
             except:
                 #证明输出格式错误
                 llm_error_count += 1
-                my_chilo_factory.mutator_generator_logger.info(
-                    f"seed_id：{generate_target['seed_id']}  LLM生成变异器时格式错误！准备再次生成")
+                my_chilo_factory.mutator_generator_logger.warning(
+                    f"seed_id：{generate_target['seed_id']}  LLM生成变异器时格式错误（第{llm_error_count}次）！准备再次生成")
+                # 检查是否超过最大重试次数
+                if llm_error_count >= my_chilo_factory.llm_format_error_max_retry:
+                    my_chilo_factory.mutator_generator_logger.error(
+                        f"seed_id：{generate_target['seed_id']}  格式错误次数超过上限{my_chilo_factory.llm_format_error_max_retry}，跳过该种子")
+                    # 跳过这个任务，继续处理下一个
+                    break
 
-        my_chilo_factory.mutator_generator_logger.info(
-            f"seed_id：{generate_target['seed_id']}  LLM生成变异器代码提取成功，准备放入待修复队列")
-        my_chilo_factory.fix_mutator_list.put({"seed_id" : generate_target['seed_id'], "mutate_time" : mutate_time, "mutator_code": mutator_code})
-        my_chilo_factory.mutator_generator_logger.info(
-            f"seed_id：{generate_target['seed_id']}  变异器放入修复队列成功")
+        # 只有成功提取代码才放入修复队列
+        if mutator_code_success:
+            my_chilo_factory.mutator_generator_logger.info(
+                f"seed_id：{generate_target['seed_id']}  LLM生成变异器代码提取成功，准备放入待修复队列")
+            my_chilo_factory.fix_mutator_list.put({"seed_id" : generate_target['seed_id'], "mutate_time" : mutate_time, "mutator_code": mutator_code})
+            my_chilo_factory.mutator_generator_logger.info(
+                f"seed_id：{generate_target['seed_id']}  变异器放入修复队列成功")
+        else:
+            my_chilo_factory.mutator_generator_logger.warning(
+                f"seed_id：{generate_target['seed_id']}  生成变异器失败，已跳过该种子")
         my_chilo_factory.mutator_generator_logger.info("-"*10)
         all_end_time = time.time()
         my_chilo_factory.write_mutator_generator_csv(all_end_time, generate_target['seed_id'], all_end_time-all_start_time,

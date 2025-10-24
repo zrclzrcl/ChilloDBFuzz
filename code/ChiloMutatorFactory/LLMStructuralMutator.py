@@ -276,6 +276,7 @@ Your generated SQL should be MAXIMALLY COMPLEX and target crash-prone areas. Pri
         my_chilo_factory.structural_mutator_logger.info(f"结构化变异器接收到变异任务，seed_id：{target_seed_id}")
         seed_sql = my_chilo_factory.all_seed_list.seed_list[target_seed_id].seed_sql
         prompt = _get_structural_prompt(seed_sql, my_chilo_factory.target_dbms, my_chilo_factory.target_dbms_version)   #获取提示词
+        structural_mutate_success = False
         while True:
             structural_mutate_llm_start_time = time.time()
             my_chilo_factory.structural_mutator_logger.info(f"seed_id：{target_seed_id}，准备调用LLM进行结构化变异")
@@ -289,13 +290,25 @@ Your generated SQL should be MAXIMALLY COMPLEX and target crash-prone areas. Pri
             after_mutate_testcase = my_chilo_factory.llm_tool_structural_mutator.get_sql_block_content(after_mutate_testcase)  # 提取内容
             try:
                 after_mutate_testcase = after_mutate_testcase[0]
+                structural_mutate_success = True
                 break
             except:
                 #说明生成格式出现错误，需要从新生成
                 llm_error_count += 1
-                my_chilo_factory.structural_mutator_logger.info(f"seed_id：{target_seed_id}，LLM生成格式错误，正在从新生成")
+                my_chilo_factory.structural_mutator_logger.warning(f"seed_id：{target_seed_id}，LLM生成格式错误（第{llm_error_count}次），正在重新生成")
+                # 检查是否超过最大重试次数
+                if llm_error_count >= my_chilo_factory.llm_format_error_max_retry:
+                    my_chilo_factory.structural_mutator_logger.error(
+                        f"seed_id：{target_seed_id}，格式错误次数超过上限{my_chilo_factory.llm_format_error_max_retry}，使用原始SQL")
+                    after_mutate_testcase = seed_sql  # 使用原始SQL作为fallback
+                    structural_mutate_success = True  # 标记为成功以继续流程
+                    break
                 continue
-            #作为新的种子加入到列表中
+
+        # 只有成功才加入种子池
+        if not structural_mutate_success:
+            my_chilo_factory.structural_mutator_logger.warning(f"seed_id：{target_seed_id}，结构化变异失败，跳过")
+            continue  # 跳过后续处理，继续下一个任务
 
         my_chilo_factory.structural_mutator_logger.info(f"seed_id：{target_seed_id}，正在加入到种子池中")
         _, new_seed_id = my_chilo_factory.all_seed_list.add_seed_to_list(after_mutate_testcase.encode("utf-8"))

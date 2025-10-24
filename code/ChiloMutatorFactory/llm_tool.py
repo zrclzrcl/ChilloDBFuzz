@@ -8,6 +8,10 @@ import threading
 from openai import OpenAI
 import logging
 class LLMTool:
+    # 类级别的共享计数器（所有实例共享）
+    _global_request_count = 0
+    _global_count_lock = threading.Lock()
+    
     def __init__(self, llm_api_key, llm_model, base_url, logger:logging.Logger):
         """
         初始化函数
@@ -19,27 +23,25 @@ class LLMTool:
         self.llm_model = llm_model
         self.base_url = base_url
         self.logger = logger
-        self.request_count = 0
-        self._count_lock = threading.Lock()  # 添加锁保护计数器
         
         # 复用 OpenAI client 实例，提高性能
         self.client = OpenAI(
             api_key=self.llm_api_key,
             base_url=self.base_url,
         )
-        self.logger.info("LLM工具已实例化")
+        self.logger.info(f"LLM工具已实例化 (模型: {llm_model})")
 
     def chat_llm(self, prompt: str, system_prompt = "You are a DBMS fuzzing expert. Carefully reason step-by-step following the user's instructions, then provide the result."):
         """
         :param prompt:      提示词字典，需要按照{role}
         :return:                  调用LLM后LLM返回的结果
         """
-        # 使用锁保护计数器，确保线程安全
-        with self._count_lock:
-            self.request_count += 1
-            count_now = self.request_count
+        # 使用类级别的全局计数器，所有LLM实例共享
+        with LLMTool._global_count_lock:
+            LLMTool._global_request_count += 1
+            count_now = LLMTool._global_request_count
         
-        self.logger.info(f"LLM 第{count_now}次请求准备开始")
+        self.logger.info(f"LLM 第{count_now}次请求准备开始 (模型: {self.llm_model})")
         start_time = time.time()
         while True:
             try:

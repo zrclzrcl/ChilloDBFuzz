@@ -225,7 +225,12 @@ def chilo_parser(chilo_factory: ChiloFactory):
                     break
                 except:
                     llm_format_error_count += 1
-                    chilo_factory.parser_logger.warning(f"seed_id:{parse_target['seed_id']} LLM解析内容提取失败，LLM生成格式错误，重新解析...")
+                    chilo_factory.parser_logger.warning(f"seed_id:{parse_target['seed_id']} LLM解析内容提取失败，LLM生成格式错误（第{llm_format_error_count}次），重新解析...")
+                    # 检查是否超过最大重试次数
+                    if llm_format_error_count >= chilo_factory.llm_format_error_max_retry:
+                        chilo_factory.parser_logger.error(f"seed_id:{parse_target['seed_id']} 解析格式错误次数超过上限{chilo_factory.llm_format_error_max_retry}，放弃该种子")
+                        parse_msg = need_parse_sql  # 使用原始SQL作为fallback
+                        break
             chilo_factory.parser_logger.info(
                 f"seed_id:{parse_target['seed_id']} LLM解析内容提取成功")
             save_parsed_sql_path = os.path.join(chilo_factory.parsed_sql_path, f"{parse_target['seed_id']}.txt")

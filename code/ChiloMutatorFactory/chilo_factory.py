@@ -65,7 +65,16 @@ class ChiloFactory:
         self.fix_mutator_try_time = config['OTHERS']['FIX_MUTATOR_TRY_TIME']
         self.semantic_fix_max_time = config['OTHERS']['SEMANTIC_FIX_MAX_TIME']
         self.times_to_structural_mutator = config['OTHERS']['TIMES_TO_STRUCTURAL_MUTATOR']
-        self.fixer_thread_count = config['OTHERS'].get('FIXER_THREAD_COUNT', 1)  # fixer线程数量，默认为1
+        
+        # 线程配置
+        self.parser_thread_count = config['OTHERS'].get('PARSER_THREAD_COUNT', 1)
+        self.mutator_generator_thread_count = config['OTHERS'].get('MUTATOR_GENERATOR_THREAD_COUNT', 1)
+        self.structural_mutator_thread_count = config['OTHERS'].get('STRUCTURAL_MUTATOR_THREAD_COUNT', 1)
+        self.fixer_thread_count = config['OTHERS'].get('FIXER_THREAD_COUNT', 1)
+        
+        # 错误重试配置
+        self.llm_format_error_max_retry = config['OTHERS'].get('LLM_FORMAT_ERROR_MAX_RETRY', 5)
+        self.syntax_error_max_retry = config['OTHERS'].get('SYNTAX_ERROR_MAX_RETRY', 5)
 
         #下面是CSV文件
         self.mutator_fixer_csv_path = config['CSV']['MUTATOR_FIXER_CSV_PATH']

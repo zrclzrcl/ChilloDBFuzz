@@ -20,29 +20,48 @@ def init(seed):
     global chilo_factory
     chilo_factory = cf.ChiloFactory()   #首先初始化整个工厂（读配置文件）
     chilo_factory.main_logger.info("Chilo工厂初始化成功！")
-    chilo_factory.main_logger.info("Chilo工厂准备启动3个子线程")
-    #还要启动多个线程
-    parser = threading.Thread(target=LLMParser.chilo_parser, args=(chilo_factory,))
-    mutator_generator = threading.Thread(target=LLMMutatorGenerater.chilo_mutator_generator, args=(chilo_factory,))
-    structural_mutator = threading.Thread(target=LLMStructuralMutator.structural_mutator, args=(chilo_factory,))
     
-    chilo_factory.main_logger.info("Chilo工厂启动解析器中~")
-    parser.start()
-    chilo_factory.main_logger.info("解析器启动成功")
-    chilo_factory.main_logger.info("Chilo工厂启动变异器生成器中~")
-    mutator_generator.start()
-    chilo_factory.main_logger.info("变异器生成器启动成功")
-    chilo_factory.main_logger.info("Chilo工厂启动结构化变异器中~")
-    structural_mutator.start()
-    chilo_factory.main_logger.info("结构化变异器启动成功")
+    # 计算总线程数
+    total_threads = (chilo_factory.parser_thread_count + 
+                    chilo_factory.mutator_generator_thread_count + 
+                    chilo_factory.structural_mutator_thread_count + 
+                    chilo_factory.fixer_thread_count)
+    chilo_factory.main_logger.info(f"Chilo工厂准备启动{total_threads}个子线程")
     
-    # 根据配置启动多个fixer线程
+    # 启动多个Parser线程
+    chilo_factory.main_logger.info(f"Chilo工厂启动解析器中~（共{chilo_factory.parser_thread_count}个线程）")
+    parser_threads = []
+    for i in range(chilo_factory.parser_thread_count):
+        parser_t = threading.Thread(target=LLMParser.chilo_parser, args=(chilo_factory,))
+        parser_t.start()
+        parser_threads.append(parser_t)
+        chilo_factory.main_logger.info(f"解析器[线程{i}]启动成功")
+    
+    # 启动多个Mutator Generator线程
+    chilo_factory.main_logger.info(f"Chilo工厂启动变异器生成器中~（共{chilo_factory.mutator_generator_thread_count}个线程）")
+    generator_threads = []
+    for i in range(chilo_factory.mutator_generator_thread_count):
+        generator_t = threading.Thread(target=LLMMutatorGenerater.chilo_mutator_generator, args=(chilo_factory,))
+        generator_t.start()
+        generator_threads.append(generator_t)
+        chilo_factory.main_logger.info(f"变异器生成器[线程{i}]启动成功")
+    
+    # 启动多个Structural Mutator线程
+    chilo_factory.main_logger.info(f"Chilo工厂启动结构化变异器中~（共{chilo_factory.structural_mutator_thread_count}个线程）")
+    structural_threads = []
+    for i in range(chilo_factory.structural_mutator_thread_count):
+        structural_t = threading.Thread(target=LLMStructuralMutator.structural_mutator, args=(chilo_factory,))
+        structural_t.start()
+        structural_threads.append(structural_t)
+        chilo_factory.main_logger.info(f"结构化变异器[线程{i}]启动成功")
+    
+    # 启动多个Fixer线程
     chilo_factory.main_logger.info(f"Chilo工厂启动变异器修复器中~（共{chilo_factory.fixer_thread_count}个线程）")
     fixer_threads = []
     for i in range(chilo_factory.fixer_thread_count):
-        mutator_fixer_t = threading.Thread(target=mutator_fixer.fix_mutator, args=(chilo_factory, i))
-        mutator_fixer_t.start()
-        fixer_threads.append(mutator_fixer_t)
+        fixer_t = threading.Thread(target=mutator_fixer.fix_mutator, args=(chilo_factory, i))
+        fixer_t.start()
+        fixer_threads.append(fixer_t)
         chilo_factory.main_logger.info(f"变异器修复器[线程{i}]启动成功")
     
     chilo_factory.main_logger.info("初始化完成，结束初始化~")

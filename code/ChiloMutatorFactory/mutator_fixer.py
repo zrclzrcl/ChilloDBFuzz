@@ -235,8 +235,15 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory, thread_id=0):
             except Exception as e:
                 syntax_fix_start_time = time.time()
                 syntax_error_count += 1
+                # 检查是否超过语法错误修复上限
+                if syntax_error_count > my_chilo_factory.syntax_error_max_retry:
+                    my_chilo_factory.mutator_fixer_logger.error(
+                        f"[线程{thread_id}]seed_id：{fix_seed_id}，语法错误修复次数超过上限{my_chilo_factory.syntax_error_max_retry}，放弃该变异器")
+                    at_last_is_all_correct = False
+                    break  # 跳出检测循环
+                
                 my_chilo_factory.mutator_fixer_logger.info(
-                    f"seed_id：{fix_seed_id}，试运行失败，出现语法错误，准备进行第 {syntax_error_count} 次语法修复")
+                    f"[线程{thread_id}]seed_id：{fix_seed_id}，试运行失败，出现语法错误，准备进行第 {syntax_error_count} 次语法修复")
                 error_trace = traceback.format_exc()
                 # 出问题那就是语法有问题，调用LLM修复
                 fix_syntax_prompt = get_fix_syntax_prompt(fix_mutator_code, error_trace)
@@ -266,12 +273,32 @@ def fix_mutator(my_chilo_factory: chilo_factory.ChiloFactory, thread_id=0):
                         #出问题，表示输出格式有问题，从新来
                         syntax_llm_format_error_count += 1
                         my_chilo_factory.mutator_fixer_logger.warning(
-                            f"seed_id：{fix_seed_id}，第 {syntax_error_count} 次语法修复失败，LLM返回格式错误，准备进行下一轮尝试")
+                            f"[线程{thread_id}]seed_id：{fix_seed_id}，第 {syntax_error_count} 次语法修复失败，LLM返回格式错误（第{syntax_llm_format_error_count}次），准备进行下一轮尝试")
+                        # 检查格式错误是否超过上限
+                        if syntax_llm_format_error_count >= my_chilo_factory.llm_format_error_max_retry:
+                            my_chilo_factory.mutator_fixer_logger.error(
+                                f"[线程{thread_id}]seed_id：{fix_seed_id}，语法修复格式错误次数超过上限{my_chilo_factory.llm_format_error_max_retry}，放弃该变异器")
+                            break  # 跳出内层while循环，会重新进入外层的语法修复
 
-        #到这里说明语法语义都没问题了
+        #到这里说明语法语义都没问题了或超过了修复上限
+        # 检查是否真的修复成功
+        if not at_last_is_all_correct:
+            my_chilo_factory.mutator_fixer_logger.error(
+                f"[线程{thread_id}]seed_id：{fix_seed_id}，修复失败或超过上限，跳过该变异器")
+            all_end_time = time.time()
+            my_chilo_factory.write_mutator_fixer_csv(all_end_time, fix_seed_id, all_end_time-all_start_time,
+                                              -1, fix_mutate_time, llm_use_count, syntax_fix_use_time_all,
+                                              syntax_error_count, syntax_llm_format_error_count, syntax_fix_use_time_llm,
+                                              syntax_llm_count, syntax_fix_up_token_all, syntax_fix_down_token_all,
+                                              sematic_fix_use_time_all, sematic_mask_error_count, sematic_random_error_count,
+                                              semantic_error_count, semantic_error_llm_use_time, semantic_error_llm_count,
+                                              semantic_llm_format_error, semantic_up_token_all, semantic_down_token_all, 
+                                              my_chilo_factory.fix_mutator_list.qsize(), at_last_is_all_correct)
+            continue  # 跳过任务发布，继续处理下一个
+        
         #先获取一个mutator_id（使用锁保护，确保线程安全）
         my_chilo_factory.mutator_fixer_logger.info(
-            f"[线程{thread_id}]seed_id：{fix_seed_id}，语法语义修复结束，准备进行FUZZ任务发布")
+            f"[线程{thread_id}]seed_id：{fix_seed_id}，语法语义修复成功，准备进行FUZZ任务发布")
         
         with my_chilo_factory.mutator_id_lock:
             now_mutator_id = my_chilo_factory.all_seed_list.seed_list[fix_seed_id].next_mutator_id
