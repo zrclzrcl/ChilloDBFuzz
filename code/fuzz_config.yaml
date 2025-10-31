@@ -5,3 +5,8 @@ FUZZER_PATH: "../AFLplusplus/afl-fuzz"
 CHILO_MUTATOR_PATH: "./"
 #CHILO_CONDA_PYTHON_PATH: "/home/conda/envs/chilo/bin/python"
 FUZZ_TIME: 7210
+
+IS_USE_SQUIRREL: True #是否使用Squirrel进行变异
+SQUIRREL_LIB_PATH: "./Squirrel/libsqlite_mutator.so"
+SQUIRREL_CONFIG_PATH: "./Squirrel/config.yaml"
+

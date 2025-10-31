@@ -1,0 +1,6 @@
+---
+required: ["init_lib", "pragma"]
+should_exist: ["init_lib", "pragma"]
+init_lib: ./SQUIRREL/init_lib
+pragma: ./SQUIRREL/pragma
+db: sqlite

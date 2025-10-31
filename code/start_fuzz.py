@@ -14,6 +14,10 @@ def main():
     fuzz_time = config["FUZZ_TIME"]
     chilo_mutator_path = config["CHILO_MUTATOR_PATH"]
 
+    is_use_squirrel = config["IS_USE_SQUIRREL"]
+    squirrel_lib_path = config["SQUIRREL_LIB_PATH"]
+    squirrel_config_path = config["SQUIRREL_CONFIG_PATH"]
+
     can_fuzz_dbms_list = ["SQLite"]
 
     if target_dbms not in can_fuzz_dbms_list:
@@ -25,6 +29,18 @@ def main():
     os.environ["AFL_FAST_CAL"] = "1"    #禁用初期多次执行种子时的路径校准
     os.environ["PYTHONPATH"] = chilo_mutator_path
     os.environ["AFL_PYTHON_MODULE"] = "ChiloMutate"
+
+    if is_use_squirrel:
+        if not os.path.exists(squirrel_config_path):
+            print("Invalid path for squirrel config file")
+            raise Exception(f"Invalid path for squirrel config file: {squirrel_config_path}")
+        
+        if not os.path.exists(squirrel_lib_path):
+            print("Invalid path for squirrel lib file")
+            raise Exception(f"Invalid path for squirrel lib file: {squirrel_lib_path}")
+
+        os.environ["AFL_CUSTOM_MUTATOR_LIBRARY"]= squirrel_lib_path
+        os.environ["SQUIRREL_CONFIG"] = squirrel_config_path
 
 
     #3. 启动FUZZ
